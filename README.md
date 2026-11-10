@@ -11,6 +11,12 @@ with simply buying and holding an index fund under the same costs.
 
 **Status: Phase 1 (backtesting).** No real money, no live trading.
 
+**Documentation:**
+- [Product requirements (PRD)](docs/PRD.md): goals, users, requirements by phase, open
+  questions.
+- [Infrastructure](docs/INFRASTRUCTURE.md): hosting, DNS, configuration, security, deployment
+  runbook, operations.
+
 ## What's in the box
 
 - **Backtest engine** (`api/src/tirelessinvest/engine`): pure Python, no I/O.
@@ -129,6 +135,12 @@ database on whatever server you point it at. CI runs both suites, plus the front
    IPv4; the direct connection string is IPv6-only.
 5. Free projects pause after about a week of inactivity, which stops the cron job. Use Pro
    once anything needs to run unattended.
+6. Under **Authentication → SMTP Settings**, configure your own email provider. Supabase's
+   built-in email only delivers to members of your Supabase organization, so without this
+   nobody else can confirm a sign-up.
+
+Full step-by-step setup, DNS and operations details are in
+[docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md#10-setup-runbook-first-deployment).
 
 ### 2. Railway (two services from this repo)
 
