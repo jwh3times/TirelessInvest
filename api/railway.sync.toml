@@ -1,0 +1,14 @@
+# Railway service: "price-sync" (cron). Same image as the API, different start command.
+# In the service settings set
+#   Root Directory      = /api
+#   Config-as-code path = /api/railway.sync.toml
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["/api/**"]
+
+[deploy]
+startCommand = "python -m stocklab.jobs.sync_prices"
+# 22:30 UTC on weekdays = after the US close in both EST and EDT. Times are UTC.
+cronSchedule = "30 22 * * 1-5"
+restartPolicyType = "NEVER"
