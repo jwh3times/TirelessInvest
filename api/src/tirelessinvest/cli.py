@@ -1,4 +1,4 @@
-"""Operator commands. Usage: python -m stocklab.cli make-admin you@example.com"""
+"""Operator commands. Usage: python -m tirelessinvest.cli make-admin you@example.com"""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def make_admin(email: str, force: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="stocklab")
+    parser = argparse.ArgumentParser(prog="tirelessinvest")
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("make-admin", help="grant the admin role to an existing user")
     p.add_argument("email")

@@ -20,7 +20,7 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     settings = get_settings()
-    app = FastAPI(title="Stock Strategy Lab API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="TirelessInvest API", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,

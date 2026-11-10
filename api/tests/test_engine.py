@@ -4,13 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from stocklab.engine.backtest import BacktestError, BacktestRequest, run_backtest
-from stocklab.engine.data import Bars, SyntheticPriceStore, synthetic_bars
-from stocklab.engine.metrics import performance
-from stocklab.engine.risk import RiskSettings, apply_risk
-from stocklab.engine.simulator import Costs, decision_days, simulate
-from stocklab.engine.strategies import STRATEGIES, Strategy, build_strategy
-from stocklab.engine.strategies.base import StrategyParams
+from tirelessinvest.engine.backtest import BacktestError, BacktestRequest, run_backtest
+from tirelessinvest.engine.data import Bars, SyntheticPriceStore, synthetic_bars
+from tirelessinvest.engine.metrics import performance
+from tirelessinvest.engine.risk import RiskSettings, apply_risk
+from tirelessinvest.engine.simulator import Costs, decision_days, simulate
+from tirelessinvest.engine.strategies import STRATEGIES, Strategy, build_strategy
+from tirelessinvest.engine.strategies.base import StrategyParams
 
 NO_COSTS = Costs(fee_bps=0, slippage_bps=0)
 

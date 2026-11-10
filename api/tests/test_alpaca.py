@@ -2,7 +2,7 @@ from datetime import date
 
 import httpx
 
-from stocklab.market.alpaca import AlpacaClient
+from tirelessinvest.market.alpaca import AlpacaClient
 
 
 def test_paginates_parses_dates_and_falls_back_from_sip():

@@ -194,7 +194,7 @@ class FakeAlpaca:
 
 
 def test_price_store_backfills_once_and_skips_unknown_symbols(client, db):
-    from stocklab.market.store import PostgresPriceStore
+    from tirelessinvest.market.store import PostgresPriceStore
 
     alpaca = FakeAlpaca()
     store = PostgresPriceStore(alpaca, backfill_floor=date(2016, 1, 1))
@@ -214,7 +214,7 @@ def test_price_store_backfills_once_and_skips_unknown_symbols(client, db):
 
 
 def test_make_admin_refuses_second_admin(client, db, capsys):
-    from stocklab.cli import make_admin
+    from tirelessinvest.cli import make_admin
 
     make_user(db, admin=True)
     _, _ = make_user(db)

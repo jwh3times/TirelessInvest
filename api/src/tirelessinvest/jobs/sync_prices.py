@@ -1,4 +1,4 @@
-"""Scheduled job: refresh stored prices. Run with `python -m stocklab.jobs.sync_prices`.
+"""Scheduled job: refresh stored prices. Run with `python -m tirelessinvest.jobs.sync_prices`.
 
 Railway runs this on a cron schedule (see railway.sync.toml). It must exit when done.
 """

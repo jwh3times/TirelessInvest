@@ -1,6 +1,10 @@
-# Stock Strategy Lab
+# TirelessInvest
 
-A sandbox for testing automated investing strategies with simulated money. You choose a
+An autonomous investing product in the making: you pick a risk level and the system does
+the investing for you. It's built in phases, starting with the part that tells you whether
+an automated strategy is worth trusting at all.
+
+Today it is a sandbox for testing those strategies with simulated money. You choose a
 strategy, a set of investments, a period, a simulated deposit and a risk level. The engine
 replays history day by day, trading as the strategy would have, and compares the result
 with simply buying and holding an index fund under the same costs.
@@ -9,7 +13,7 @@ with simply buying and holding an index fund under the same costs.
 
 ## What's in the box
 
-- **Backtest engine** (`api/src/stocklab/engine`): pure Python, no I/O.
+- **Backtest engine** (`api/src/tirelessinvest/engine`): pure Python, no I/O.
   - Decisions are made at the close and filled at the **next day's open**, so a strategy never
     trades at a price it has already seen. A test enforces this.
   - Fees, slippage, fractional shares, cash, and forced sale when a symbol's data ends
@@ -70,7 +74,7 @@ API:
 cd api
 cp .env.example .env    # fill in Alpaca keys, or set PRICE_SOURCE=synthetic
 uv sync
-uv run uvicorn stocklab.main:app --reload
+uv run uvicorn tirelessinvest.main:app --reload
 ```
 
 If `supabase start` reports a legacy JWT secret, set `SUPABASE_JWT_SECRET` to it in
@@ -88,7 +92,7 @@ pnpm dev                # http://localhost:5173
 Make yourself admin (sign up in the app first):
 
 ```bash
-cd api && uv run python -m stocklab.cli make-admin you@example.com
+cd api && uv run python -m tirelessinvest.cli make-admin you@example.com
 ```
 
 Then sign out and back in so your token carries the role. The command refuses if another

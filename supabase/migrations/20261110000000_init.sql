@@ -1,4 +1,4 @@
--- Stock Strategy Lab: initial schema.
+-- TirelessInvest: initial schema.
 --
 -- Access model: the browser only talks to Supabase for sign-in. All data reads and writes go
 -- through the Python API, which connects as the database owner and enforces permissions and

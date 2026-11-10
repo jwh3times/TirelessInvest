@@ -1,7 +1,7 @@
 """Admin-only endpoints: users, permissions, feature flags, audit log.
 
 There is deliberately no endpoint to grant the admin role: the project has a single admin,
-set once with `python -m stocklab.cli make-admin`.
+set once with `python -m tirelessinvest.cli make-admin`.
 """
 
 from __future__ import annotations

@@ -23,7 +23,7 @@ def database_url():
     admin_url = os.environ.get("TEST_DATABASE_URL")
     if not admin_url:
         pytest.skip("TEST_DATABASE_URL not set")
-    name = f"stocklab_test_{uuid.uuid4().hex[:8]}"
+    name = f"tirelessinvest_test_{uuid.uuid4().hex[:8]}"
     with psycopg.connect(admin_url, autocommit=True) as conn:
         conn.execute(f'create database "{name}"')
     url = admin_url.rsplit("/", 1)[0] + f"/{name}"
@@ -32,7 +32,7 @@ def database_url():
         for migration in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
             conn.execute(migration.read_text())
     yield url
-    from stocklab.db import close_pool
+    from tirelessinvest.db import close_pool
 
     close_pool()
     with psycopg.connect(admin_url, autocommit=True) as conn:
@@ -49,14 +49,14 @@ def client(database_url):
     )
     from fastapi.testclient import TestClient
 
-    from stocklab.auth import get_verifier
-    from stocklab.config import get_settings
-    from stocklab.routes.backtests import get_price_store
+    from tirelessinvest.auth import get_verifier
+    from tirelessinvest.config import get_settings
+    from tirelessinvest.routes.backtests import get_price_store
 
     get_settings.cache_clear()
     get_verifier.cache_clear()
     get_price_store.cache_clear()
-    from stocklab.main import create_app
+    from tirelessinvest.main import create_app
 
     with TestClient(create_app()) as c:
         yield c

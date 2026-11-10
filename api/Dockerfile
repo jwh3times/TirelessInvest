@@ -23,4 +23,4 @@ USER app
 
 EXPOSE 8000
 # Railway injects PORT. Shell form so ${PORT} expands.
-CMD uvicorn stocklab.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips="*"
+CMD uvicorn tirelessinvest.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips="*"

@@ -25,7 +25,7 @@ export function LoginPage() {
   return (
     <div className="center">
       <form className="card login" onSubmit={submit}>
-        <h1>Stock Strategy Lab</h1>
+        <h1>TirelessInvest</h1>
         <p className="muted">
           Test investing strategies on historical prices with simulated money.
         </p>

@@ -7,7 +7,7 @@ export function Layout() {
   return (
     <div className="app">
       <header className="topbar">
-        <span className="brand">Stock Strategy Lab</span>
+        <span className="brand">TirelessInvest</span>
         <nav>
           <NavLink to="/" end>
             Lab
