@@ -11,14 +11,19 @@ product requirements and the hosting runbook.
   (`api/src/tirelessinvest/engine`).
 - `web/`: Vite + React app (pnpm).
 - `supabase/`: local config and migrations.
+- `scripts/`: Node checks for the agent config, the installed skills and the docs, with their tests.
 
 ## Commands
 
 ```bash
 cd api && uv sync && uv run pytest       # API and engine tests
+cd api && uv run ruff check . && uv run ruff format --check .   # API lint and format
 cd web && pnpm install && pnpm build     # web build
 node scripts/sync-agents.mjs --check     # agent config is in sync
 node scripts/check-skills.mjs            # installed skills match skills-lock.json
+node scripts/lint-agent-neutrality.mjs   # skill and agent sources read correctly from both trees
+node scripts/check-docs.mjs              # doc links resolve and docs/agents/docs.md maps every doc
+node --test "scripts/*.test.mjs"         # tests for the scripts above
 ```
 
 ## Development flow
