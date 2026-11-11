@@ -52,3 +52,31 @@ jobs:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_ANON_KEY: ci-placeholder
           VITE_API_URL: http://127.0.0.1:8000
+
+  # Agent config and docs. The scripts need no dependencies, so nothing is installed.
+  agents:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # .claude/skills/ mirrors .agents/skills/, and the shared AGENTS.md blocks are current.
+      - name: Generated agent config is in sync
+        run: node scripts/sync-agents.mjs --check
+
+      - name: Installed skills match the lock
+        run: node scripts/check-skills.mjs
+
+      # Skill and agent sources are read from their mirrored copies too: a bare $0-$9 in a
+      # SKILL.md or a relative link that breaks there fails here.
+      - name: Skill and agent sources are tool-neutral
+        run: node scripts/lint-agent-neutrality.mjs
+
+      # Local links and anchors resolve, and the doc map lists every document.
+      - name: Docs links and doc map
+        run: node scripts/check-docs.mjs
+
+      - name: Script tests
+        run: node --test "scripts/*.test.mjs"
