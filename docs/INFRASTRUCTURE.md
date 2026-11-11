@@ -48,7 +48,7 @@ set it up from scratch, how to operate it, and what's still missing.
 | Component | Platform | Repo path | What it does |
 |---|---|---|---|
 | Web app | Cloudflare Pages | `web/` | React 19 + Vite + TypeScript single-page app. Static files only. |
-| API | Railway service `api` | `api/` | Python 3.13, FastAPI, pandas/numpy. Backtests, permissions, flags, admin. |
+| API | Railway service `api` | `api/` | Python 3.15, FastAPI, pandas/numpy. Backtests, permissions, flags, admin. |
 | Price sync | Railway cron service `price-sync` | `api/` (same image) | Downloads adjusted daily prices from Alpaca, then exits. |
 | Database | Supabase Postgres | `supabase/migrations/` | All app data. Schema managed by migrations. |
 | Auth | Supabase Auth | `supabase/config.toml` | Email/password accounts; issues JWTs. |
@@ -269,7 +269,7 @@ code both work during the switch.
 
 ### 8.4 Container image (`api/Dockerfile`)
 
-- `python:3.13-slim` plus a pinned `uv` 0.11.32.
+- `python:3.15-slim` plus a pinned `uv` 0.11.32.
 - Dependencies install in their own layer from `uv.lock` (`--frozen --no-dev`).
 - Default command: `uvicorn tirelessinvest.main:app --host 0.0.0.0 --port ${PORT:-8000}`.
   It trusts proxy headers so client IPs are correct behind Railway and Cloudflare.
