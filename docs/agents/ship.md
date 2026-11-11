@@ -14,5 +14,5 @@
 - `web/`: `pnpm build`, only when `web/` changed (`tsc -b` and the Vite build).
 
 CI runs every repo-root entry above in its `agents` job on every run, the script tests included,
-and the `api` and `web` entries in their own jobs. CI-only: the `api` job's `uv run pytest -q`, which needs the Postgres service. `main` has
-no required status checks.
+and the `api` and `web` entries in their own jobs. CI-only: the `api` job's `uv run pytest -q`,
+which needs the Postgres service. `main` has no required status checks.

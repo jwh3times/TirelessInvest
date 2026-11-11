@@ -54,7 +54,7 @@ set it up from scratch, how to operate it, and what's still missing.
 | Auth | Supabase Auth | `supabase/config.toml` | Email/password accounts; issues JWTs. |
 | Market data | Alpaca Market Data API | `api/src/tirelessinvest/market/` | Daily bars, split/dividend-adjusted. |
 | DNS / TLS / CDN | Cloudflare | – | DNS for `tirelessinvest.com`; serves Pages; proxies the API. |
-| Source + CI | GitHub + GitHub Actions | `.github/workflows/ci.yml` | Lint, tests against a real Postgres, frontend build. |
+| Source + CI | GitHub + GitHub Actions | `.github/workflows/ci.yml` | Lint, tests against a real Postgres, frontend build, agent-config and docs checks. |
 
 ## 3. Decision record
 
@@ -234,8 +234,9 @@ Runs on every push to `main` and on every pull request:
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
 - **agents job:** `sync-agents.mjs --check` → `check-skills.mjs` → `lint-agent-neutrality.mjs` →
   `check-docs.mjs` → the script tests, all on Node 22 with nothing installed. It fails when the
-  agent config mirror is stale, an installed skill differs from `skills-lock.json`, or a doc link
-  or the `Doc map` in `docs/agents/docs.md` is out of date.
+  agent config mirror is stale, an installed skill differs from `skills-lock.json`, a skill or
+  agent source is not tool-neutral, a doc link or the `Doc map` in `docs/agents/docs.md` is out
+  of date, or a script test fails.
 
 The integration tests run against plain Postgres, using `api/tests/supabase_stub.sql` to stand
 in for the parts of Supabase the migration needs (`auth.users`, the `anon` and `authenticated`
