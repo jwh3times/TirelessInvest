@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Designed and configured in the repo. Not yet deployed. |
-| **Last updated** | 2026-11-10 |
+| **Status** | In production since 2026-11-11: web at https://tirelessinvest.com, API at https://api.tirelessinvest.com. Supabase on the Free plan, Resend as the Auth SMTP provider, Alpaca Basic market data. |
+| **Last updated** | 2026-11-11 |
 | **Companion doc** | [PRD.md](PRD.md) |
 
 This document covers how TirelessInvest is hosted: what runs where, why it was chosen, how to
@@ -208,7 +208,7 @@ locally with `supabase db reset`, then `supabase db push` to production. Push th
 | Permissions and flags | Checked on the server for each request. UI hiding is cosmetic. |
 | Direct database access from browsers | Blocked by RLS with no policies plus revoked grants (tested). |
 | Other users' data | Other users' backtests return 404. |
-| Secrets | Railway variables (Alpaca keys, DB URL). Nothing secret in the repo or the web bundle. |
+| Secrets | Railway variables (Alpaca keys, DB URL). The owner keeps the production values in a password manager, never in `.env` files. Nothing secret in the repo or the web bundle. |
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
 | Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
@@ -276,8 +276,8 @@ code both work during the switch.
 - The `price-sync` service overrides the start command:
   `python -m tirelessinvest.jobs.sync_prices`.
 
-**Not yet verified:** the image hasn't been built during development, because Docker wasn't
-available. The first Railway deploy is its first real build.
+Railway builds the image on every deploy. To build it locally, from the repository root:
+`docker build -t tirelessinvest-api ./api`.
 
 ## 9. Scheduled jobs
 
@@ -330,8 +330,13 @@ recognize aren't registered, so a typo isn't synced forever.
    email service only delivers to members of your Supabase organization, on every plan, and is
    heavily rate-limited.
 4. Under **Connect**, copy the **Session pooler** connection string for `DATABASE_URL`.
+5. Under **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**.
+   Accounts are invite-only ([PRD Q2](PRD.md#11-product-decisions)).
 
 ### Step 3: Railway
+
+Railway stops reading the config-as-code files below on 2026-12-01; moving off them is tracked in
+[#27](https://github.com/jwh3times/TirelessInvest/issues/27).
 
 1. Create a project from the GitHub repo `jwh3times/TirelessInvest`.
 2. Create the `api` service:
@@ -360,12 +365,17 @@ recognize aren't registered, so a typo isn't synced forever.
 ### Step 5: First run
 
 1. Trigger `price-sync` once by hand from Railway, so prices exist before the first backtest.
-2. Sign up on `https://tirelessinvest.com`.
-3. Make yourself admin, from a machine with the production `DATABASE_URL` (or with
-   `railway run`):
+2. Create your account in the Supabase dashboard: **Authentication → Users → Add user**, with
+   **Auto Confirm User** on. Sign-up is off (step 2.5), so the app can't create it.
+3. Make yourself admin by running the CLI from the API image, from the repository root, with the
+   production `DATABASE_URL` exported in your shell (never typed on the command line):
 
    ```bash
-   cd api && uv run python -m tirelessinvest.cli make-admin you@example.com
+   docker build -t tirelessinvest-api ./api
+   ```
+
+   ```bash
+   docker run --rm -e DATABASE_URL tirelessinvest-api python -m tirelessinvest.cli make-admin you@example.com
    ```
 
 4. Sign out and back in. The Admin tab should appear.
