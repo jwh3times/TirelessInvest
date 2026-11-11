@@ -9,7 +9,8 @@
   deploy command changes.
 - `docs/INFRASTRUCTURE.md`: hosting, DNS, configuration, security, the deployment runbook and
   operations. Update when `api/Dockerfile`, `api/railway*.toml`, `supabase/`, `.github/workflows/`
-  or an environment variable changes.
+  or an environment variable changes, or a GitHub repository setting does (the `main` ruleset,
+  CodeQL setup, merge options).
 - `docs/PRD.md`: goals, users, requirements by phase and open product questions. `owner-only`.
 - `AGENTS.md`: guidance for every coding agent: layout, commands, the development flow. Update when
   the layout or a command changes. The `shared:` blocks are written by `scripts/sync-agents.mjs`;

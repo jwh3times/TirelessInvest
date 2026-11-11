@@ -211,6 +211,7 @@ locally with `supabase db reset`, then `supabase db push` to production. Push th
 | Secrets | Railway variables (Alpaca keys, DB URL). Nothing secret in the repo or the web bundle. |
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
+| Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
 | Token freshness | Role changes reach the API only after the user's token refreshes (up to about an hour) or they sign in again. Acceptable with a single admin. |
 
 **Gaps:**
