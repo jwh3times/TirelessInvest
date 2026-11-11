@@ -1,6 +1,6 @@
 # One image, two Railway services: the API (default CMD) and the price-sync cron job
 # (start command overridden in railway.sync.toml).
-FROM python:3.13-slim
+FROM python:3.15-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /usr/local/bin/uv
 
