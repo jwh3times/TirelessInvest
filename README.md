@@ -115,7 +115,8 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres uv run
 ```
 
 The second form also runs API + database integration tests. It creates and drops a scratch
-database on whatever server you point it at. CI runs both suites, plus the frontend build.
+database on whatever server you point it at. CI runs both suites, the frontend build, and the
+agent-config and docs checks listed in [AGENTS.md](AGENTS.md).
 
 ## Deploying
 

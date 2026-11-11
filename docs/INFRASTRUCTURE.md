@@ -232,6 +232,10 @@ Runs on every push to `main` and on every pull request:
   Postgres 17 service container. That covers 27 tests: engine, Alpaca client and API/database
   integration.
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
+- **agents job:** `sync-agents.mjs --check` → `check-skills.mjs` → `lint-agent-neutrality.mjs` →
+  `check-docs.mjs` → the script tests, all on Node 22 with nothing installed. It fails when the
+  agent config mirror is stale, an installed skill differs from `skills-lock.json`, or a doc link
+  or the `Doc map` in `docs/agents/docs.md` is out of date.
 
 The integration tests run against plain Postgres, using `api/tests/supabase_stub.sql` to stand
 in for the parts of Supabase the migration needs (`auth.users`, the `anon` and `authenticated`
