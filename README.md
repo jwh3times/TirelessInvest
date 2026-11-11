@@ -12,8 +12,8 @@ with simply buying and holding an index fund under the same costs.
 **Status: Phase 1 (backtesting).** No real money, no live trading.
 
 **Documentation:**
-- [Product requirements (PRD)](docs/PRD.md): goals, users, requirements by phase, open
-  questions.
+- [Product requirements (PRD)](docs/PRD.md): goals, users, requirements by phase, product
+  decisions.
 - [Infrastructure](docs/INFRASTRUCTURE.md): hosting, DNS, configuration, security, deployment
   runbook, operations.
 - [AGENTS.md](AGENTS.md): guidance for coding agents: layout, commands, the agent skills and the
@@ -174,14 +174,14 @@ frontend origin.
   universes.
 - **Overfitting.** If you tune parameters until the past looks good, you are fitting noise.
   Pick parameters, then test on a period you didn't tune on.
-- **Daily bars only.** Intraday and day trading need minute data, which is mostly paid.
-  That's Phase 3.
+- **Daily bars only.** Intraday and day trading need minute data. That's Phase 3.
 - **Backtests run synchronously.** The worst case (50 symbols, 30 years, daily rebalancing)
   takes roughly 10–15 seconds. Monthly strategies take under a second. Move to a job queue
   if that becomes a problem.
-- **Market-data licensing.** Free data plans are generally for personal use. Read your
-  provider's terms before letting the public see prices, since that can count as
-  redistribution.
+- **Market-data licensing.** Alpaca's market data is licensed for personal, non-commercial
+  use, and showing prices to other people can count as redistribution. The API returns only
+  derived results, never raw prices. The terms that apply before anyone else gets access are
+  in [PRD §10](docs/PRD.md#10-compliance-and-legal-constraints).
 
 ## Roadmap
 

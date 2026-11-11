@@ -86,8 +86,9 @@ S&P 500 index fund.
 4. **Simulated before real.** No real-money feature ships until the simulated version has run
    unattended for a meaningful period (see [§9](#9-success-metrics)).
 5. **Simple for the user, transparent on request.** One dial and one button by default; full
-   trade lists, parameters and derived results for anyone who wants to look. Raw price tables
-   are for the admin only, because market-data licences are personal-use (§10).
+   trade lists, parameters and derived results for anyone who wants to look. No raw price view
+   exists today; if one is added, it is for the admin only, because market-data licences are
+   personal-use (§10).
 
 ---
 
@@ -377,25 +378,28 @@ non-goals.
 | Investment advice | Automatically managing other people's money is investment-adviser activity. Real money stays owner-only (Phase 4). |
 | Naming | Avoid "broker", "fund" and "savings" in branding. They imply a registered broker-dealer, a pooled fund or principal protection. "TirelessInvest" avoids all three. |
 | Marketing claims | No promised returns. No "AI" claims. "Autonomous" and "effortless" language must sit next to clear risk statements. |
-| Market data licensing | **Alpaca:** its Terms & Conditions limit Content, market data included, to personal, non-commercial use, and require **30 days' advance written notice** before making it available to others through your own application. Hence the notice before the first invitation (A8). **Sharadar** (only for the history gate, P11): personal use only, no access for others, and data deleted within 30 days of the subscription ending. Under every plan, raw price tables are shown to the admin only; invited users see derived results (Q16). |
+| Market data licensing | **Alpaca:** its Terms & Conditions limit Content, market data included, to personal, non-commercial use, and require **30 days' advance written notice** before making it available to others through your own application. Hence the notice before the first invitation (A8). **Sharadar** (only for the history gate, P11): personal use only, no access for others, and data deleted within 30 days of the subscription ending. The API exposes derived results only, never raw prices; any future raw price view is admin-only under every plan (Q16). |
 | Pattern day trading | Relevant only for Phase 3/4 margin accounts. FINRA replaced the rule with risk-based intraday margin on 2026-06-04; brokers may phase it in until 2027-10-20. |
 
 ## 11. Product decisions
 
 The owner settled the open product questions on 2026-11-10. Each answer is reflected in the
-sections it changes; this table is the record. No product questions are open.
+sections it changes; this table is the record. No product questions remain open. Individual
+requirements can still be marked **Open** where a detail waits on something else (P9 waits on
+email setup). Numbers follow the decision session's question log; the gaps were follow-up
+questions, folded into the rows they refine.
 
 | # | Question | Decision |
 |---|---|---|
 | Q1 | **What does success mean?** | Beating buy-and-hold SPY after costs on a **risk-adjusted** basis, not maximum profit. The verdict is decided by Sharpe against SPY's Sharpe; the CAGR difference stays in the sentence as context (§6.4). |
-| Q2 | **Can the public sign up?** | No. Sign-up closes now and stays invite-only until Phase 2's unattended-run metric is met (§9). The owner invites through Supabase, after reviewing existing accounts and giving Alpaca 30 days' notice (A8). Public sign-up is a separate decision after that. |
+| Q2 | **Can the public sign up?** | No. Public sign-up is to be closed (A8; still open in the built app) and stays invite-only until Phase 2's unattended-run metric is met (§9). The owner invites through Supabase, after reviewing existing accounts and giving Alpaca 30 days' notice. Whether to open sign-up is deferred until then. |
 | Q3 | **Can Phase 2 users override individual trades?** | No. Pause, resume and close only (P6). |
 | Q4 | **What does a risk level promise?** | Only its mechanics (per-symbol cap, volatility target, cash floor), stated as not a loss limit. The dial becomes 1–10, default 5 (§6.7). |
 | Q5 | **Should the dial choose the strategy?** | No. They stay independent; a level may recommend a strategy but never selects one. |
 | Q6 | **Is 2016+ history enough?** | Not for trusting a strategy. Results state their 2016+ window, and the history gate (P11) requires testing through 2000–02 and 2008–09 before paper trading. Alpaca Basic stays the only data source until then; Sharadar is bought only for the gate. |
 | Q7 | **Should the product guard against overfitting?** | Yes: no parameter optimiser, ever, and an optional holdout period as a later Phase 1 item. |
 | Q8 | **Account deletion and retention?** | Self-serve deletion in the MVP: immediate, removes all the user's data, keeps an anonymised audit trail (A7). |
-| Q16 | **Can invited users see raw prices?** | No. Raw price tables are admin-only under every data licence; invited users see derived results (§10). |
+| Q16 | **Can invited users see raw prices?** | No. Invited users see derived results; any raw price view, if ever built, is admin-only under every data licence (§10). |
 | Q22 | **Where does day trading sit?** | After Phase 2, as planned (Phase 3). Intraday backtesting may start earlier. |
 | Q23 | **Live data?** | No paid live data. Intraday paper trading will use free real-time IEX data; full real-time data ($99/mo) is reconsidered only if IEX-only data proves insufficient (§8). |
 
