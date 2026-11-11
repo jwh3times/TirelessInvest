@@ -12,8 +12,8 @@
   `.github/dependabot.yml` or an environment variable changes, or a GitHub repository setting does (the `main` ruleset,
   CodeQL setup, merge options).
 - `docs/PRD.md`: goals, users, requirements by phase and the owner's product decisions. `owner-only`.
-- `AGENTS.md`: guidance for every coding agent: layout, commands, the development flow. Update when
-  the layout or a command changes. The `shared:` blocks are written by `scripts/sync-agents.mjs`;
+- `AGENTS.md`: guidance for every coding agent: commands, the development flow, the agent skills.
+  Update when a command changes. The `shared:` blocks are written by `scripts/sync-agents.mjs`;
   never edit them here.
 - `CLAUDE.md`: imports `AGENTS.md` for Claude Code. `owner-only`.
 - `docs/agents/*.md`: settings the shared skills read. Update when this repository's process
