@@ -15,4 +15,8 @@
 
 CI runs every repo-root entry above in its `agents` job on every run, the script tests included,
 and the `api` and `web` entries in their own jobs. CI-only: the `api` job's `uv run pytest -q`,
-which needs the Postgres service. `main` has no required status checks.
+which needs the Postgres service.
+
+The `Main branch rules` ruleset on `main` requires a PR (merge commits only, review threads
+resolved), the `api`, `web` and `agents` checks passing on a branch up to date with `main`, and
+CodeQL code scanning (`gh api repos/jwh3times/TirelessInvest/rules/branches/main`).

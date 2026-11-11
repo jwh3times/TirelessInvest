@@ -211,6 +211,7 @@ locally with `supabase db reset`, then `supabase db push` to production. Push th
 | Secrets | Railway variables (Alpaca keys, DB URL). Nothing secret in the repo or the web bundle. |
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
+| Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
 | Token freshness | Role changes reach the API only after the user's token refreshes (up to about an hour) or they sign in again. Acceptable with a single admin. |
 
 **Gaps:**
@@ -237,6 +238,11 @@ Runs on every push to `main` and on every pull request:
   agent config mirror is stale, an installed skill differs from `skills-lock.json`, a skill or
   agent source is not tool-neutral, a doc link or the `Doc map` in `docs/agents/docs.md` is out
   of date, or a script test fails.
+
+The `Main branch rules` ruleset makes all three jobs required checks on `main`, with the branch up
+to date before merge. It also requires a pull request (merge commits only, review threads
+resolved) and CodeQL code scanning (GitHub's default setup, weekly and on pull requests), and it
+blocks force-pushes and deletion of `main`.
 
 The integration tests run against plain Postgres, using `api/tests/supabase_stub.sql` to stand
 in for the parts of Supabase the migration needs (`auth.users`, the `anon` and `authenticated`
