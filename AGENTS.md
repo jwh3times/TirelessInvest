@@ -5,14 +5,6 @@ Guidance for every coding agent in this repository (Claude Code reads it through
 deployment; [docs/PRD.md](docs/PRD.md) and [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) hold the
 product requirements and the hosting runbook.
 
-## Layout
-
-- `api/`: Python (uv) FastAPI service and the pure-Python backtest engine
-  (`api/src/tirelessinvest/engine`).
-- `web/`: Vite + React app (pnpm).
-- `supabase/`: local config and migrations.
-- `scripts/`: Node checks for the agent config, the installed skills and the docs, with their tests.
-
 ## Commands
 
 ```bash

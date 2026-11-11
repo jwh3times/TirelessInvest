@@ -16,7 +16,7 @@ with simply buying and holding an index fund under the same costs.
   decisions.
 - [Infrastructure](docs/INFRASTRUCTURE.md): hosting, DNS, configuration, security, deployment
   runbook, operations.
-- [AGENTS.md](AGENTS.md): guidance for coding agents: layout, commands, the agent skills and the
+- [AGENTS.md](AGENTS.md): guidance for coding agents: commands, the agent skills and the
   development flow.
 
 ## What's in the box
