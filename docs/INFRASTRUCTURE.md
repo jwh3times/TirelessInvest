@@ -212,13 +212,13 @@ locally with `supabase db reset`, then `supabase db push` to production. Push th
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
 | Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
+| Dependencies | Dependabot alerts and security updates are on. `.github/dependabot.yml` opens version updates daily at 05:00 US Eastern for the API (uv), the web app (npm), the API's Docker base image and GitHub Actions, with minor and patch updates grouped per package ecosystem (Docker updates come one at a time). |
 | Token freshness | Role changes reach the API only after the user's token refreshes (up to about an hour) or they sign in again. Acceptable with a single admin. |
 
 **Gaps:**
 
 - no rate limiting;
 - no web application firewall rules;
-- no automated dependency updates (Dependabot);
 - no security headers (CSP) on the Pages site.
 
 See §11.
