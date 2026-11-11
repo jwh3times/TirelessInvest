@@ -12,7 +12,7 @@ Every requirement below carries one of these labels, so it's clear what is settl
 - **Built**: implemented and tested in this repo.
 - **Decided**: agreed, not yet built.
 - **Proposed**: a recommendation awaiting the owner's sign-off.
-- **Open**: an unresolved question (see [§11](#11-open-questions)).
+- **Open**: an unresolved question (see [§11](#11-product-decisions)).
 
 ---
 
@@ -49,8 +49,8 @@ S&P 500 index fund.
 | G2 | Always compare against buying and holding an index fund under the same costs. | Built |
 | G3 | Make risk a single, understandable control (the risk dial), separate from strategy choice. | Built |
 | G4 | Produce results that are hard to fool: no look-ahead, realistic costs, warnings about known biases. | Built |
-| G5 | Users can sign up; the owner is the sole admin and controls permissions and feature flags. | Built |
-| G6 | Run simulated ("paper") portfolios that trade by themselves on live prices, with no user effort after setup. | Decided (Phase 2) |
+| G5 | Users have accounts; the owner is the sole admin and controls permissions and feature flags. Accounts are by invitation only (Q2). | Built; invite-only Decided |
+| G6 | Run simulated ("paper") portfolios that trade by themselves on each trading day's end-of-day prices, with no user effort after setup. | Decided (Phase 2) |
 | G7 | Eventually trade real money in the owner's own brokerage account. | Decided (Phase 4) |
 
 ### Non-goals
@@ -61,6 +61,7 @@ S&P 500 index fund.
 | Holding user funds or acting as a broker | Users never deposit real money with TirelessInvest. Simulated deposits only, except the owner's own broker account in Phase 4. **Decided.** |
 | Guaranteeing or promising returns | Any such claim would be false. The product reports what happened in history and says plainly that history doesn't predict the future. **Decided.** |
 | Claiming to be "AI" | The strategies are rule-based. The SEC has penalized firms for overstating AI use ("AI-washing"). **Decided.** |
+| Parameter optimisation | No "find the best parameters" feature, ever: it manufactures overfitted results. A holdout period (§6.4) shows when a strategy only shines on the data it was tuned on. **Decided** (Q7). |
 | Social features, copy trading, chat | Out of scope. |
 | Native mobile apps | The web app must work on phones. Native apps are out of scope. |
 
@@ -69,14 +70,15 @@ S&P 500 index fund.
 | User | Description | Access |
 |---|---|---|
 | **Owner / admin** | The project owner. The only admin, ever, unless they deliberately force another. | Every permission; admin dashboard. |
-| **Signed-up user** | Anyone who creates an account. Phase 1 assumes this means friends and testers, not the public. | Default permissions (see §6.2), adjustable by the admin. |
-| **Public visitor** | Whether strangers can sign up is **Open** (Q2). It affects data licensing, email setup and marketing claims. | No access without an account. |
+| **Invited user** | Someone the owner invites: friends and testers. Sees derived results only, never raw prices. | Default permissions (see §6.2), adjustable by the admin. |
+| **Public visitor** | Can't create an account: sign-up is invite-only until Phase 2 is proven (Q2, **Decided**). | No access without an account. |
 
 ## 5. Product principles
 
 1. **Honest numbers over impressive numbers.** Include costs by default. Warn about
    survivorship bias, synthetic data and data gaps. Prefer the index-fund default, because it
-   usually wins.
+   usually wins. A strategy succeeds only if it beats buying and holding the index after costs
+   on a **risk-adjusted** basis; a higher raw return bought with more risk is not success (Q1).
 2. **Risk and strategy are different questions.** Strategy decides *what* to hold; the risk
    dial decides *how much* money is exposed. Turning risk up never adds leverage.
 3. **Rules are enforced on the server.** Hiding a button in the UI is cosmetic. The API checks
@@ -84,7 +86,8 @@ S&P 500 index fund.
 4. **Simulated before real.** No real-money feature ships until the simulated version has run
    unattended for a meaningful period (see [§9](#9-success-metrics)).
 5. **Simple for the user, transparent on request.** One dial and one button by default; full
-   trade lists, parameters and data tables for anyone who wants to look.
+   trade lists, parameters and derived results for anyone who wants to look. Raw price tables
+   are for the admin only, because market-data licences are personal-use (§10).
 
 ---
 
@@ -100,7 +103,8 @@ S&P 500 index fund.
 | A4 | There is no UI or API to grant admin. A command-line tool makes the first admin and refuses a second unless `--force` is passed. | Built |
 | A5 | New sign-ups automatically receive the default permissions. | Built |
 | A6 | Users can delete their own backtests. | Built |
-| A7 | Users can delete their own account. | **Not built** (gap) |
+| A7 | Users can delete their own account, self-serve, in the MVP. Deletion is immediate and permanent behind a typed confirmation, and removes everything the user owns: backtests, permissions, flag overrides, and later their paper portfolios. Admin audit-log entries about them are kept with their identity removed. | Decided (Q8) |
+| A8 | Public sign-up is closed. The owner invites users through Supabase's built-in invitation, after reviewing the accounts that already exist. Before the first invitation, the owner gives Alpaca the 30 days' written notice its terms require (§10). | Decided (Q2) |
 
 ### 6.2 Permissions
 
@@ -141,7 +145,8 @@ Seeded flags:
 | Universe | A preset (§6.6), or a custom list of 1–50 symbols (needs `backtest:custom_universe`) |
 | Start / end date | End after start; end not in the future; range at most 30 years. UI default start: 2016-06-01 |
 | Simulated deposit | $100 – $100,000,000. Default $10,000 |
-| Risk level | 1–5, default 5 (unconstrained, so the strategy's raw behavior is visible). Explicit settings can override the preset |
+| Risk level | Built: 1–5, default 5 (unconstrained). **Decided:** 1–10, default 5 (§6.7). Explicit settings can override the preset |
+| Holdout | **Decided** (later Phase 1): optionally hold out the last N years, reported separately from the in-sample period |
 | Rebalance schedule | never / daily / weekly / monthly / quarterly. Defaults to the strategy's own |
 | Costs | Fee 0 bps and slippage 5 bps by default, adjustable |
 | Rebalance threshold | Skip trades smaller than 0.5% of equity, to avoid pointless churn |
@@ -163,7 +168,13 @@ Seeded flags:
 **Outputs:**
 
 - A plain-language verdict, e.g. "$10,000 became $17,885 (+78.9%). That is 11.7% per year behind
-  simply holding SPY."
+  simply holding SPY." Built: "ahead / behind" is decided by CAGR alone. **Decided** (Q1): it is
+  decided by the strategy's Sharpe ratio against SPY's over the same period, after costs, and
+  the sentence still reports the CAGR difference as context, e.g. "… 2.1% per year less than
+  SPY, with half the volatility: better risk-adjusted."
+- **Decided** (Q6): every result states its data window, e.g. "Tested 2016 onward only: no long
+  bear market in this period", until longer history is available.
+- **Decided** (Q7): with a holdout, the in-sample and held-out periods are reported separately.
 - Metrics: total return, CAGR, volatility, Sharpe, Sortino, max drawdown and its duration,
   Calmar, beta, alpha, correlation, best/worst day, total fees and slippage, trade count, annual
   turnover, average invested exposure. Each is shown next to the benchmark's value where that
@@ -218,13 +229,37 @@ weight to other symbols, and it never borrows.
 Volatility targeting estimates the proposed portfolio's volatility over the last 63 trading days.
 If that exceeds the target, all positions are scaled down proportionally.
 
+**Decided: a 1–10 dial, default 5** (Q4). Same mechanics, ten steps:
+
+| Level | Label | Max per symbol | Volatility target | Always in cash |
+|---|---|---|---|---|
+| 1 | Preservation | 20% | 4% / yr | 10% |
+| 2 | Preservation | 25% | 6% / yr | 5% |
+| 3 | Conservative | 30% | 8% / yr | – |
+| 4 | Conservative | 35% | 10% / yr | – |
+| **5 (default)** | Moderate | 40% | 12% / yr | – |
+| 6 | Moderate | 50% | 15% / yr | – |
+| 7 | Growth | 65% | 18% / yr | – |
+| 8 | Growth | 80% | 22% / yr | – |
+| 9 | Aggressive | 100% | 28% / yr | – |
+| 10 | Unconstrained | 100% | none | – |
+
+- The default sits at about three-quarters of SPY's long-run volatility (~16%), so holding the
+  index at the default is scaled down a little in turbulent periods. Unconstrained is a deliberate
+  choice, not the default.
+- **A risk level promises only its mechanics.** The UI says plainly that it is not a loss limit.
+  There is no "worst drawdown per level" figure, because drawdown depends on the strategy and
+  universe as much as the level; each backtest shows its own worst drawdown next to SPY's.
+- Backtests saved on the old 1–5 scale are migrated once to the explicit settings they ran with,
+  so they re-run exactly as before, and are labelled "old 1–5 scale".
+
 > **The original brief vs. what's built.** The original idea was a risk setting that runs from
 > "all in an index fund" to "full day trading in large/mid/small caps." The built design
 > separates those: the dial controls *exposure*, and strategy choice controls *style*. That
 > change was made because day trading isn't the high-return end of a risk scale. For most
-> retail traders it means more variance and lower returns after costs. Whether the dial should
-> eventually also *select* strategies (e.g. level 1 always means the index fund) is **Open**
-> (Q5).
+> retail traders it means more variance and lower returns after costs. **Decided** (Q5): the
+> dial and the strategy stay independent. A level may *recommend* a strategy, but never chooses
+> one.
 
 ### 6.8 Admin dashboard (Built)
 
@@ -251,42 +286,56 @@ If that exceeds the target, all positions are scaled down proportionally.
 ### 6.10 Known Phase 1 limitations
 
 - **Price history starts around 2016** (Alpaca's free data). There's no 2008 crash or dot-com
-  bust, so strategies are tested on one mostly-rising decade.
+  bust, so strategies are tested on one mostly-rising decade. Results will say so (Q6), and the
+  history gate (§7, P11) stops a strategy reaching paper trading until it has been tested
+  through both.
 - **Daily bars only.** No intraday data, so no day trading.
 - **Overfitting isn't detected.** Nothing stops a user from tuning parameters until the past
-  looks good. See Q7.
+  looks good. A holdout option is decided (Q7).
 - **No rate limiting** on the backtest endpoint.
-- **No account deletion** (A7).
+- **No account deletion** (A7, decided).
+- **Public sign-up is still open** in the built app (A8 closes it).
 
 ---
 
 ## 7. Phase 2: Autonomous paper portfolios (Draft)
 
 The first step that delivers the "works without your effort" promise, still with simulated
-money.
+money. It runs on end-of-day data: each trading day's closing prices drive the decisions, and
+orders fill at the next day's open, exactly as in a backtest. It needs no real-time data.
 
 | ID | Requirement | Status |
 |---|---|---|
 | P1 | A user creates a portfolio: name, simulated deposit, strategy plus parameters, risk level. | Decided |
 | P2 | A scheduled job runs every trading day. It checks the market calendar (holidays, early closes) and does nothing on non-trading days; it does not rely on cron alone. | Decided |
-| P3 | The job uses exactly the same decision and fill logic as the backtester, so live results and backtests are comparable. | Proposed |
+| P3 | The job uses exactly the same decision and fill logic as the backtester, so paper results and backtests are comparable. | Proposed |
 | P4 | Every simulated order, fill and resulting position is recorded. Re-running the job for the same day must not create duplicate trades. | Proposed |
 | P5 | The user sees current value, performance since creation against the benchmark, holdings and trade history. | Proposed |
-| P6 | The user can pause, resume or close a portfolio. Whether they can override individual trades is **Open** (Q3). | Proposed |
+| P6 | The user can pause, resume or close a portfolio, and cannot override individual trades. | Decided (Q3) |
 | P7 | Simulated "deposits" and "withdrawals" after creation are allowed and handled so they don't distort performance figures. | Proposed |
 | P8 | The admin can see every portfolio and disable the job globally with a feature flag (`paper_portfolios`), acting as a kill switch. | Proposed |
 | P9 | Notifications (e.g. weekly summary email) | Open; depends on email setup |
 | P10 | Data-gap handling: if prices didn't update, the job skips the day and records why. | Proposed |
+| P11 | **History gate:** a strategy can't be used in a paper portfolio until it has been backtested over history that includes the 2000–02 and 2008–09 bear markets. Longer history (Sharadar Full History prices, about $299/yr, from late 1997) is bought only when a strategy is up for promotion; its data is deleted within 30 days of the subscription ending, and the backtest results are kept. | Decided (Q6) |
 
 ## 8. Phases 3 and 4 (Outline)
 
 ### Phase 3: Intraday data and strategies
 
-- Minute-level bars from a paid data plan; a separate storage strategy for the much larger
-  volume.
+- Comes after Phase 2 has run unattended (Q22). **Backtesting** intraday strategies may start
+  earlier, because it needs no paid data.
+- **Data, all free** (Q23):
+  - Backtests use Alpaca Basic's consolidated historical minute bars (7+ years); the 15-minute
+    delay on the latest consolidated data never matters for a backtest.
+  - Intraday paper trading uses Alpaca Basic's free real-time IEX stream (one exchange, up to
+    30 symbols).
+  - Alpaca Algo Trader Plus (about $99/mo, real-time from all US exchanges) is reconsidered only
+    if IEX-only data proves misleading for a strategy that has otherwise earned trust.
+- A separate storage strategy for the much larger volume of minute data.
 - A simulator with intraday fills and more realistic slippage for small caps.
-- Pattern-day-trader constraints, if margin accounts are ever simulated. FINRA has been revising
-  this rule, so check its status when Phase 3 starts.
+- Intraday margin constraints, if margin accounts are ever simulated. FINRA replaced the
+  pattern-day-trader rule ($25,000 minimum) with risk-based intraday margin on 2026-06-04, but
+  brokers may phase the change in until 2027-10-20, so check what Alpaca applies.
 
 ### Phase 4: Real money, owner only
 
@@ -312,7 +361,7 @@ something". All of these are **Proposed**.
 | Phase | Metric | Target |
 |---|---|---|
 | 1 | Correctness checks pass in CI: no look-ahead, cost application, metric math | 100%, every push |
-| 1 | The owner can answer "does strategy X beat SPY after costs from 2016 to today?" in under a minute | Yes |
+| 1 | The owner can answer "does strategy X beat SPY after costs, risk-adjusted, from 2016 to today?" in under a minute | Yes |
 | 1 | Backtest of a monthly strategy on a preset universe | < 2s |
 | 2 | Paper portfolios run unattended | 60 consecutive trading days with no manual fixes |
 | 2 | Agreement between a paper portfolio and a backtest of the same period | Within 0.5% of ending value |
@@ -328,23 +377,27 @@ non-goals.
 | Investment advice | Automatically managing other people's money is investment-adviser activity. Real money stays owner-only (Phase 4). |
 | Naming | Avoid "broker", "fund" and "savings" in branding. They imply a registered broker-dealer, a pooled fund or principal protection. "TirelessInvest" avoids all three. |
 | Marketing claims | No promised returns. No "AI" claims. "Autonomous" and "effortless" language must sit next to clear risk statements. |
-| Market data licensing | Free data plans are generally licensed for personal use. Showing prices to the public can count as redistribution. Prices are never exposed through the API; only derived results are. Check the data provider's terms before public sign-up (Q2). |
-| Pattern day trading | Relevant only for Phase 3/4 margin accounts. Check the current FINRA rule at that time. |
+| Market data licensing | **Alpaca:** its Terms & Conditions limit Content, market data included, to personal, non-commercial use, and require **30 days' advance written notice** before making it available to others through your own application. Hence the notice before the first invitation (A8). **Sharadar** (only for the history gate, P11): personal use only, no access for others, and data deleted within 30 days of the subscription ending. Under every plan, raw price tables are shown to the admin only; invited users see derived results (Q16). |
+| Pattern day trading | Relevant only for Phase 3/4 margin accounts. FINRA replaced the rule with risk-based intraday margin on 2026-06-04; brokers may phase it in until 2027-10-20. |
 
-## 11. Open questions
+## 11. Product decisions
 
-These are decisions for the owner. The proposed defaults are suggestions, not decisions.
+The owner settled the open product questions on 2026-11-10. Each answer is reflected in the
+sections it changes; this table is the record. No product questions are open.
 
-| # | Question | Why it matters | Suggested default |
-|---|---|---|---|
-| Q1 | **What does success mean: maximum profit, or best risk-adjusted return compared with the index?** | The original brief said "maximize profit", which literally rewards the riskiest setting. The product currently measures against the index. | Risk-adjusted, against the index |
-| Q2 | **Can the public sign up, or is it invite-only?** | Decides data licensing, email (custom SMTP needed), rate limiting and how careful marketing must be. | Invite-only until Phase 2 is proven |
-| Q3 | **In Phase 2, can users override individual trades?** | Overrides undercut "autonomous" and make performance hard to attribute. | No overrides; pause/resume only |
-| Q4 | **What does a risk level promise the user?** | "Conservative" suggests a maximum loss. The dial currently promises only a volatility target and position caps. | Show the historical worst drawdown per level next to the dial; promise nothing else |
-| Q5 | **Should the dial also choose the strategy?** | The original brief tied risk to strategy (index fund up to day trading). The build keeps them separate. | Keep separate; maybe add a "recommended strategy" per level |
-| Q6 | **Is the 2016+ data window acceptable, or is a longer history source needed?** | Strategies are untested through a major bear market before 2020. | Add a longer daily-history source before trusting any strategy |
-| Q7 | **Should the product guard against overfitting?** | Users can tune until the past looks good. | Add an out-of-sample split option in a later Phase 1 iteration |
-| Q8 | **Account deletion and data retention** | Needed before public sign-up. | Self-serve deletion that cascades to all user data |
+| # | Question | Decision |
+|---|---|---|
+| Q1 | **What does success mean?** | Beating buy-and-hold SPY after costs on a **risk-adjusted** basis, not maximum profit. The verdict is decided by Sharpe against SPY's Sharpe; the CAGR difference stays in the sentence as context (§6.4). |
+| Q2 | **Can the public sign up?** | No. Sign-up closes now and stays invite-only until Phase 2's unattended-run metric is met (§9). The owner invites through Supabase, after reviewing existing accounts and giving Alpaca 30 days' notice (A8). Public sign-up is a separate decision after that. |
+| Q3 | **Can Phase 2 users override individual trades?** | No. Pause, resume and close only (P6). |
+| Q4 | **What does a risk level promise?** | Only its mechanics (per-symbol cap, volatility target, cash floor), stated as not a loss limit. The dial becomes 1–10, default 5 (§6.7). |
+| Q5 | **Should the dial choose the strategy?** | No. They stay independent; a level may recommend a strategy but never selects one. |
+| Q6 | **Is 2016+ history enough?** | Not for trusting a strategy. Results state their 2016+ window, and the history gate (P11) requires testing through 2000–02 and 2008–09 before paper trading. Alpaca Basic stays the only data source until then; Sharadar is bought only for the gate. |
+| Q7 | **Should the product guard against overfitting?** | Yes: no parameter optimiser, ever, and an optional holdout period as a later Phase 1 item. |
+| Q8 | **Account deletion and retention?** | Self-serve deletion in the MVP: immediate, removes all the user's data, keeps an anonymised audit trail (A7). |
+| Q16 | **Can invited users see raw prices?** | No. Raw price tables are admin-only under every data licence; invited users see derived results (§10). |
+| Q22 | **Where does day trading sit?** | After Phase 2, as planned (Phase 3). Intraday backtesting may start earlier. |
+| Q23 | **Live data?** | No paid live data. Intraday paper trading will use free real-time IEX data; full real-time data ($99/mo) is reconsidered only if IEX-only data proves insufficient (§8). |
 
 ## 12. Glossary
 
@@ -353,10 +406,19 @@ These are decisions for the owner. The proposed defaults are suggestions, not de
 | Backtest | Running a strategy on historical prices as if it had been live |
 | Benchmark | What a strategy is compared against; here, buy-and-hold SPY |
 | CAGR | Compound annual growth rate: the steady yearly return that gives the same end result |
+| Derived results | What is computed from prices: equity curves, returns, statistics, trades. Distinct from the raw prices themselves |
 | Drawdown | Fall from the previous peak value |
+| End-of-day data | Daily price bars, available after each day's close. What backtests and paper portfolios run on; not real-time data |
+| History gate | The rule that a strategy must be backtested through the 2000–02 and 2008–09 bear markets before it can run in a paper portfolio |
+| Holdout | The most recent N years of a backtest, kept out of the in-sample period and reported separately, to expose results that only hold where a strategy was tuned |
+| Invited user | Someone the owner has invited; the only way to get an account |
+| Real-time data | Prices as trades happen. Only intraday trading needs it |
+| Risk dial | The control that sets how much money a strategy may expose |
+| Risk level | A setting on the risk dial, 1–10. It caps exposure; it is not a loss limit |
 | Sharpe ratio | Return per unit of volatility; higher is better |
 | Slippage | The gap between the quoted price and the price you actually get |
 | Survivorship bias | Testing only on things that survived, which flatters results |
 | Look-ahead bias | A backtest using information that wasn't available at the time |
-| Paper trading | Trading with simulated money on live prices |
+| Paper trading | Trading with simulated money on real, current market prices (end-of-day prices in Phase 2) |
+| Verdict | The result's headline sentence. "Ahead of SPY" means a higher Sharpe ratio than SPY's over the same period, after costs |
 | bps | Basis points; 1 bp = 0.01% |

@@ -186,8 +186,8 @@ frontend origin.
 ## Roadmap
 
 1. ~~Backtesting, risk dial, auth, admin, flags~~ (this release)
-2. Paper portfolios: deposit simulated cash and let a scheduled job trade it daily on live
-   prices, using a market-calendar check rather than trusting cron.
+2. Paper portfolios: deposit simulated cash and let a scheduled job trade it on each trading
+   day's closing prices, using a market-calendar check rather than trusting cron.
 3. Intraday data and strategies.
 4. Real money for the owner's own Alpaca account only, behind the `live_trading` flag.
    Running other people's money is regulated (investment-adviser rules), so it is out of scope.
