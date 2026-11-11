@@ -115,7 +115,7 @@ Phase 4 needs no new vendor. Its limit is history: it only goes back to about 20
 | Not used | Why not | Revisit when |
 |---|---|---|
 | Kubernetes, microservices | One API and one cron job don't need them | Never, at this scale |
-| Redis / message queue | Backtests run inside the request; a Postgres `jobs` table can queue work later | Backtests regularly exceed ~30s, or parameter sweeps arrive |
+| Redis / message queue | Backtests run inside the request; a Postgres `jobs` table can queue work later | Backtests regularly exceed ~30s |
 | Separate staging environment | Cost and effort for a personal project; local Supabase + CI cover most risk | Before Phase 4 (real money) |
 | Feature-flag SaaS (LaunchDarkly etc.) | A table plus overrides covers it | Percentage rollouts or experiments are needed |
 | Next.js / server-side rendering | Logged-in dashboard; no SEO need | A public marketing site is wanted |
@@ -407,7 +407,8 @@ Prices change, so treat these as directional and check each provider's pricing p
 | Cloudflare (DNS, Pages) | $0 | $0 |
 | Supabase | $0 (free tier, pauses when idle) | ~$25/month (Pro) |
 | Railway | ~$5/month (Hobby, includes some usage) | ~$5–20/month depending on usage |
-| Alpaca market data | $0 (basic) | $0; paid plans only if intraday data is needed (Phase 3) |
+| Alpaca market data | $0 (basic) | $0, intraday data for Phase 3 included |
+| Longer price history (Sharadar) | $0 | About $299/year, only while a strategy is up for promotion (PRD P11); not in the total |
 | SMTP provider | $0 | $0 on free tiers at low volume |
 | Domain | ~$10–15/year | same |
 | **Total** | **~$5/month** | **~$30–50/month** |
@@ -417,7 +418,7 @@ Prices change, so treat these as directional and check each provider's pricing p
 | Phase | Additions |
 |---|---|
 | 2: paper portfolios | Tables for portfolios, orders and positions. A daily `portfolio-runner` cron service (same image) that checks Alpaca's market calendar before acting. A `paper_portfolios` flag as kill switch. Alerting on runner failure. Possibly a Postgres `jobs` table plus a worker for long backtests. |
-| 3: intraday | A paid intraday data plan. Separate storage for minute bars: a partitioned table, or Parquet files in object storage. More CPU for simulations. Probably a background worker instead of synchronous requests. |
+| 3: intraday | Alpaca's free minute bars and real-time IEX stream (PRD §8). Separate storage for minute bars: a partitioned table, or Parquet files in object storage. More CPU for simulations. Probably a background worker instead of synchronous requests. |
 | 4: real money (owner only) | A staging environment. Broker keys in a dedicated secret store; consider moving the trading service to Azure with Key Vault (§3.2). Order idempotency keys, daily reconciliation against the broker, per-order and per-day limits, a kill switch, and alerting that pages the owner. A dry-run period before live orders. |
 
 ## 14. Local development
