@@ -54,6 +54,32 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ci-placeholder
           VITE_API_URL: http://127.0.0.1:8000
 
+  # CHANGELOG.md names the version this pull request's merge will mint (docs/agents/releases.md).
+  # A required check, so it always reports: the exemptions are inside the step, not a job `if`.
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history and tags, to predict the version
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Changelog names the version this merge mints
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "Checked on the pull request; on main the release workflow has already moved on."
+            exit 0
+          fi
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "Dependabot PR: its changes roll up into the next section written."
+            exit 0
+          fi
+          node scripts/check-changelog.mjs
+
   # Agent config and docs. The scripts need no dependencies, so nothing is installed.
   agents:
     runs-on: ubuntu-latest

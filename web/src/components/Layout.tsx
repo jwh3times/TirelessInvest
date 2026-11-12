@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { releaseLabel } from "../lib/release";
 import { supabase } from "../lib/supabase";
 
 export function Layout() {
@@ -28,6 +29,7 @@ export function Layout() {
       </main>
       <footer className="muted small">
         Simulated money only. Past performance in a backtest does not predict future results.
+        <div className="release">{releaseLabel}</div>
       </footer>
     </div>
   );

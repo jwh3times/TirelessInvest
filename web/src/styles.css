@@ -86,6 +86,7 @@ a { color: var(--accent); }
 .topbar-user { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 main { flex: 1; padding: 20px; width: 100%; max-width: 1400px; margin: 0 auto; }
 footer { text-align: center; padding: 16px; }
+footer .release { margin-top: 4px; font-variant-numeric: tabular-nums; }
 .narrow { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
 .lab { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 20px; align-items: start; }

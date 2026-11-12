@@ -1,6 +1,7 @@
 [project]
 name = "tirelessinvest"
-version = "0.1.0"
+# Not the product version: that is the vX.Y.Z tag on each merge, with its line in /VERSION.
+version = "0.0.0"
 description = "Backtesting engine and API for TirelessInvest"
 requires-python = ">=3.12"
 dependencies = [

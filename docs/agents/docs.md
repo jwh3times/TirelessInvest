@@ -11,6 +11,9 @@
   operations. Update when `api/Dockerfile`, `api/railway*.toml`, `supabase/`, `.github/workflows/`,
   `.github/dependabot.yml` or an environment variable changes, or a GitHub repository setting does (the `main` ruleset,
   CodeQL setup, merge options).
+- `CHANGELOG.md`: one dated section per version a merge mints, written by `ship` before the merge
+  and checked by the `changelog` CI job (`docs/agents/releases.md`). `frozen` for released
+  sections: never rewrite one after its tag exists.
 - `GLOSSARY.md`: the project's own vocabulary, one term per entry with the words to avoid. Update
   when a design session settles a term.
 - `docs/adr/*.md`: architecture decision records, one decision each with the reason it was made.
