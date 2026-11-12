@@ -66,8 +66,14 @@ when Claude Code asks and sign in from `/mcp`; in Codex, trust the project, then
 - **`context7`**: current docs for any library or service the code calls. The stack is newer than
   training data, so check here before relying on what you remember.
 - **`cloudflare-api`**: Cloudflare Pages builds and DNS for `tirelessinvest.com`.
-- **`railway`**: status and logs for the `api` and `price-sync` services. These are production, so
-  redeploy, accept a deploy or change a feature flag only when the user asks.
+- **`railway`**: status, logs, metrics and config for the `api` and `price-sync` services. These are
+  production, and the server can also change them: deploys, variables, services, volumes, domains
+  and Railway's own feature flags (not the app's, which live in Postgres). Use its read tools; make
+  a change only when the user asks for that change. Both harnesses enforce this: every mutating
+  tool, plus `list-variables` and `get-bucket-credentials` (they return production secrets) and the
+  open-ended `railway-agent`, prompts first. Claude Code lists them by name in
+  `.claude/settings.json`, so a tool Railway adds goes on that list; Codex prompts for any tool not
+  marked read-only and names those three in `.codex/config.toml`.
 - **`supabase-local`**: the local `supabase start` stack, so it answers only while that runs. Schema
   changes go in `supabase/migrations/`.
 
