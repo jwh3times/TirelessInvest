@@ -1,0 +1,14 @@
+# Project MCP servers for Codex; Codex loads this file only once the project is trusted.
+# Keep it in step with .mcp.json (Claude Code). AGENTS.md says why each server is here.
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.cloudflare-api]
+url = "https://mcp.cloudflare.com/mcp"
+
+[mcp_servers.railway]
+url = "https://mcp.railway.com"
+
+[mcp_servers.supabase-local]
+url = "http://localhost:54321/mcp"
