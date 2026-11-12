@@ -13,8 +13,8 @@
   CodeQL setup, merge options).
 - `docs/PRD.md`: goals, users, requirements by phase and the owner's product decisions. `owner-only`.
 - `AGENTS.md`: guidance for every coding agent: commands, the development flow, the MCP servers,
-  the agent skills. Update when a command changes, or when `.mcp.json` or `.codex/config.toml`
-  does. The `shared:` blocks are written by `scripts/sync-agents.mjs`; never edit them here.
+  the agent skills. Update when a command changes, or when `.mcp.json`, `.codex/config.toml` or
+  `.claude/settings.json` does. The `shared:` blocks are written by `scripts/sync-agents.mjs`; never edit them here.
 - `CLAUDE.md`: imports `AGENTS.md` for Claude Code. `owner-only`.
 - `docs/agents/*.md`: settings the shared skills read. Update when this repository's process
   changes.

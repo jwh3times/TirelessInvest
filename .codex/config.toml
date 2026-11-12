@@ -9,6 +9,18 @@ url = "https://mcp.cloudflare.com/mcp"
 
 [mcp_servers.railway]
 url = "https://mcp.railway.com"
+# Prompt for every tool Railway doesn't mark read-only; .claude/settings.json lists the same gate.
+default_tools_approval_mode = "writes"
+
+# Reads that return production secrets, and the open-ended agent, prompt too.
+[mcp_servers.railway.tools.list-variables]
+approval_mode = "prompt"
+
+[mcp_servers.railway.tools.get-bucket-credentials]
+approval_mode = "prompt"
+
+[mcp_servers.railway.tools.railway-agent]
+approval_mode = "prompt"
 
 [mcp_servers.supabase-local]
 url = "http://localhost:54321/mcp"
