@@ -21,12 +21,6 @@ on:
 permissions:
   contents: read
 
-# Serialize releases so two close merges can't compute the same build number or deploy out of
-# order.
-concurrency:
-  group: release-main
-  cancel-in-progress: false
-
 env:
   API_HEALTH_URL: https://api.tirelessinvest.com/health
   PAGES_PROJECT: tirelessinvest
@@ -43,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0 # full history and tags, to compute the next build number
+          fetch-depth: 0 # full history and tags, to compute the next version
 
       - uses: actions/setup-node@v7
         with:
@@ -59,12 +53,24 @@ jobs:
             tag="$existing"
             echo "Commit already has ${tag}; reusing it."
           else
-            # The same computation the changelog check and the ship skill make.
-            tag="v$(node scripts/next-version.mjs)"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag -a "$tag" -m "Version ${tag#v}"
-            git push origin "refs/tags/${tag}"
+            # No concurrency group here: GitHub cancels a queued run when a newer one queues,
+            # which would leave a merge untagged. If another run takes the number first, the
+            # push is refused; recompute from the refreshed tags and try again.
+            for attempt in 1 2 3 4 5; do
+              # The same computation the changelog check and the ship skill make.
+              tag="v$(node scripts/next-version.mjs)"
+              git tag -a "$tag" -m "Version ${tag#v}"
+              if git push origin "refs/tags/${tag}"; then
+                break
+              fi
+              git tag -d "$tag"
+              if [ "$attempt" = 5 ]; then
+                echo "::error::Could not push a version tag after 5 attempts."
+                exit 1
+              fi
+            done
           fi
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
           echo "### Released \`${tag}\` from \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -76,8 +82,17 @@ jobs:
     timeout-minutes: 30
     # Restricted to main, so pull request and Dependabot workflows can't read its secret.
     environment: production
+    # One web deploy at a time, in merge order. A queued run that a newer one replaces is
+    # cancelled, which is fine: the newer run deploys a newer web app.
+    concurrency:
+      group: release-web
+      cancel-in-progress: false
     steps:
-      - name: Wait for the API to run this commit
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # history, to recognize a newer API commit that contains this one
+
+      - name: Wait for the API to run this commit or a later one
         run: |
           deadline=$(( $(date +%s) + 15 * 60 ))
           while :; do
@@ -86,14 +101,18 @@ jobs:
               echo "The API is running ${GITHUB_SHA}."
               break
             fi
+            # A later merge may already be live; this commit is then part of what the API runs.
+            if [ -n "$commit" ] && git fetch -q origin main &&
+              git merge-base --is-ancestor "$GITHUB_SHA" "$commit" 2>/dev/null; then
+              echo "The API is running ${commit}, which includes ${GITHUB_SHA}."
+              break
+            fi
             if [ "$(date +%s)" -ge "$deadline" ]; then
               echo "::error::After 15 minutes the API still reports '${commit:-nothing}', not ${GITHUB_SHA}. Check the api deploy in Railway; the web app was not deployed."
               exit 1
             fi
             sleep 20
           done
-
-      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
         with:

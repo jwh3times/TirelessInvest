@@ -79,11 +79,11 @@ def apply_migrations(database_url: str, folder: Path, *, dry_run: bool = False) 
             conn.execute("select pg_advisory_lock(%s)", (MIGRATION_LOCK,))
             for statement in CREATE_HISTORY:
                 conn.execute(statement)
-        done = recorded_versions(conn)
+        recorded = recorded_versions(conn)
         migrations = find_migrations(folder)
-        unknown = sorted(done - {migration.version for migration in migrations})
+        unknown = sorted(recorded - {migration.version for migration in migrations})
         for migration in migrations:
-            if migration.version in done:
+            if migration.version in recorded:
                 continue
             if dry_run:
                 applied.append(migration.version)

@@ -10,6 +10,10 @@ from conftest import MIGRATIONS
 
 from tirelessinvest.jobs.migrate import MIGRATION_LOCK, apply_migrations
 
+# What the real folder holds, read straight from the filenames (`<version>_<name>.sql`).
+REAL = sorted(tuple(p.stem.split("_", 1)) for p in MIGRATIONS.glob("*.sql"))
+REAL_VERSIONS = [version for version, _ in REAL]
+
 
 def recorded(url: str) -> list[tuple[str, str]]:
     """What `supabase migration list` reads: the CLI's own history table."""
@@ -22,8 +26,8 @@ def recorded(url: str) -> list[tuple[str, str]]:
 def test_fresh_database_gets_every_migration_recorded(empty_database_url):
     run = apply_migrations(empty_database_url, MIGRATIONS)
 
-    assert run.applied == ["20261110000000"]
-    assert recorded(empty_database_url) == [("20261110000000", "init")]
+    assert run.applied == REAL_VERSIONS
+    assert recorded(empty_database_url) == REAL
     with psycopg.connect(empty_database_url) as conn:
         assert conn.execute("select to_regclass('public.backtests')").fetchone()[0] == "backtests"
 
@@ -34,7 +38,7 @@ def test_second_run_applies_nothing(empty_database_url):
     run = apply_migrations(empty_database_url, MIGRATIONS)
 
     assert run.applied == []
-    assert recorded(empty_database_url) == [("20261110000000", "init")]
+    assert recorded(empty_database_url) == REAL
 
 
 def write_migrations(folder, files: dict[str, str]):
@@ -83,7 +87,7 @@ def test_migration_newer_than_the_image_is_reported_and_tolerated(empty_database
 def test_dry_run_reports_pending_and_changes_nothing(empty_database_url):
     run = apply_migrations(empty_database_url, MIGRATIONS, dry_run=True)
 
-    assert run.applied == ["20261110000000"]
+    assert run.applied == REAL_VERSIONS
     with psycopg.connect(empty_database_url) as conn:
         assert conn.execute(
             "select to_regclass('public.backtests'),"
@@ -104,4 +108,4 @@ def test_run_waits_while_another_run_holds_the_lock(empty_database_url):
         holder.execute("select pg_advisory_unlock(%s)", (MIGRATION_LOCK,))
     runner.join(timeout=30)
 
-    assert result["run"].applied == ["20261110000000"]
+    assert result["run"].applied == REAL_VERSIONS

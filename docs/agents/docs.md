@@ -8,7 +8,7 @@
   when routes or jobs change (`api/src/tirelessinvest/routes/`, `jobs/`), or when a setup, test or
   deploy command changes.
 - `docs/INFRASTRUCTURE.md`: hosting, DNS, configuration, security, the deployment runbook and
-  operations. Update when `api/Dockerfile`, `api/railway*.toml`, `supabase/`, `.github/workflows/`,
+  operations. Update when `api/Dockerfile`, `.dockerignore`, `supabase/`, `.github/workflows/`,
   `.github/dependabot.yml` or an environment variable changes, or a GitHub repository setting does (the `main` ruleset,
   CodeQL setup, merge options).
 - `CHANGELOG.md`: one dated section per version a merge mints, written by `ship` before the merge

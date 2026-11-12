@@ -15,7 +15,8 @@
 
 CI runs every repo-root entry above in its `agents` job on every run, the script tests included,
 and the `api` and `web` entries in their own jobs. CI-only: the `api` job's `uv run pytest -q`,
-which needs the Postgres service.
+which needs the Postgres service. The `changelog` job runs the `Changelog check` on pull requests,
+skipping Dependabot's.
 
 The `Main branch rules` ruleset on `main` requires a PR (merge commits only, review threads
 resolved), the `api`, `web` and `agents` checks passing on a branch up to date with `main`, and
