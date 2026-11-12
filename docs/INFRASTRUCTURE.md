@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | In production since 2026-11-11: web at https://tirelessinvest.com, API at https://api.tirelessinvest.com. Supabase on the Free plan, Resend as the Auth SMTP provider, Alpaca Basic market data. |
-| **Last updated** | 2026-11-11 |
+| **Last updated** | 2026-11-12 |
 | **Companion doc** | [PRD.md](PRD.md) |
 
 This document covers how TirelessInvest is hosted: what runs where, why it was chosen, how to
@@ -32,9 +32,13 @@ set it up from scratch, how to operate it, and what's still missing.
                          (weekdays 22:30 UTC)  ───────▶ Alpaca market data API
 
      GitHub (jwh3times/TirelessInvest) ──▶ GitHub Actions CI
-                                       ──▶ Railway auto-deploy (api, price-sync)
-                                       ──▶ Cloudflare Pages auto-build (web)
+                                       ──▶ Railway auto-deploy (api, price-sync), migrations first
+                                       ──▶ GitHub Actions release: version tag, then the web app
+                                           to Cloudflare Pages once the API runs the merge
 ```
+
+Every merge to `main` is a release ([GLOSSARY.md](../GLOSSARY.md)): it mints the next version and
+goes to production in a fixed order, migrations, then the API, then the web app (§8.2).
 
 **Request flow:**
 
@@ -50,11 +54,12 @@ set it up from scratch, how to operate it, and what's still missing.
 | Web app | Cloudflare Pages | `web/` | React 19 + Vite + TypeScript single-page app. Static files only. |
 | API | Railway service `api` | `api/` | Python 3.15, FastAPI, pandas/numpy. Backtests, permissions, flags, admin. |
 | Price sync | Railway cron service `price-sync` | `api/` (same image) | Downloads adjusted daily prices from Alpaca, then exits. |
-| Database | Supabase Postgres | `supabase/migrations/` | All app data. Schema managed by migrations. |
+| Database | Supabase Postgres | `supabase/migrations/` | All app data. Schema managed by migrations, applied by each release (§8.3). |
 | Auth | Supabase Auth | `supabase/config.toml` | Email/password accounts; issues JWTs. |
 | Market data | Alpaca Market Data API | `api/src/tirelessinvest/market/` | Daily bars, split/dividend-adjusted. |
 | DNS / TLS / CDN | Cloudflare | – | DNS for `tirelessinvest.com`; serves Pages; proxies the API. |
-| Source + CI | GitHub + GitHub Actions | `.github/workflows/ci.yml` | Lint, tests against a real Postgres, frontend build, agent-config and docs checks. |
+| Source + CI | GitHub + GitHub Actions | `.github/workflows/ci.yml` | Lint, tests against a real Postgres, frontend build, changelog, agent-config and docs checks. |
+| Releases | GitHub Actions | `.github/workflows/release.yml` | Tags every merge to `main` with its version, then deploys the web app after the API (§8.2). |
 
 ## 3. Decision record
 
@@ -81,8 +86,8 @@ has the least setup. The trade-offs accepted: weaker burst handling for big para
 and weaker secret management than Azure Key Vault (which matters in Phase 4).
 
 **Exit path:** the API is a plain Dockerfile plus environment variables, and the only
-Railway-specific features used are cron and config files. Moving to Azure Container Apps or Fly
-is roughly an afternoon's work.
+Railway-specific features used are cron, the pre-deploy command and `RAILWAY_GIT_COMMIT_SHA`.
+Moving to Azure Container Apps or Fly is roughly an afternoon's work.
 
 ### 3.3 Supabase for Auth and Postgres
 
@@ -116,7 +121,7 @@ Phase 4 needs no new vendor. Its limit is history: it only goes back to about 20
 |---|---|---|
 | Kubernetes, microservices | One API and one cron job don't need them | Never, at this scale |
 | Redis / message queue | Backtests run inside the request; a Postgres `jobs` table can queue work later | Backtests regularly exceed ~30s |
-| Separate staging environment | Cost and effort for a personal project; local Supabase + CI cover most risk | Before Phase 4 (real money) |
+| Separate staging environment, pull request preview deploys | Cost and effort for a personal project; local Supabase + CI cover most risk | Before Phase 4 (real money) |
 | Feature-flag SaaS (LaunchDarkly etc.) | A table plus overrides covers it | Percentage rollouts or experiments are needed |
 | Next.js / server-side rendering | Logged-in dashboard; no SEO need | A public marketing site is wanted |
 
@@ -164,17 +169,40 @@ Read by `api/src/tirelessinvest/config.py`. Names are case-insensitive.
 | `BACKFILL_ON_DEMAND` | api | `true` | Fetch unseen symbols when a backtest needs them |
 | `BACKFILL_FLOOR` | both | `2016-01-01` | Earliest date to request history from |
 | `PORT` | api | set by Railway | Read by the container command |
+| `RAILWAY_GIT_COMMIT_SHA` | api | set by Railway | The commit the deploy was built from, reported by `/health` (`null` outside Railway) |
+| `MIGRATIONS_DIR` | both | `/app/supabase/migrations`, set in the image | Where the pre-deploy migration step reads migrations from (§8.3) |
 
-### 5.2 Web app (`web`, Cloudflare Pages build variables)
+### 5.2 Web app (`web`, build variables)
+
+The release workflow builds the web app; Cloudflare Pages runs no build. The first three are
+variables of the GitHub `production` environment (§5.3); the release workflow sets the last two.
 
 | Variable | Example | Notes |
 |---|---|---|
 | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` | Public |
 | `VITE_SUPABASE_ANON_KEY` | Supabase publishable / anon key | **Public by design**: it ends up in the browser bundle. Safe because RLS blocks it from all app data (§3.4). |
 | `VITE_API_URL` | `https://api.tirelessinvest.com` | |
+| `VITE_APP_VERSION` | `0.1.0` | The version the release minted. The footer shows `v<version> · <short commit>`, or `dev build` when unset. |
+| `VITE_APP_COMMIT` | the merge commit | |
 
 **Never put** `service_role` keys, Alpaca keys or database URLs in `VITE_*` variables. Anything
 with that prefix is shipped to every visitor's browser.
+
+### 5.3 Release workflow (GitHub `production` environment)
+
+The `web` job of `.github/workflows/release.yml` runs in the GitHub environment `production`, whose
+deployment branches are limited to `main`, so pull request and Dependabot workflows can't read its
+secret.
+
+| Name | Kind | Notes |
+|---|---|---|
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL` | Environment variables | The web build values (§5.2) |
+| `OP_SERVICE_ACCOUNT_TOKEN` | Environment secret | A 1Password service account token that can read the vault `TirelessInvest CI` |
+
+The job loads the Cloudflare credentials from 1Password at run time, from the item
+`Cloudflare Pages deploy` in that vault: `credential` becomes `CLOUDFLARE_API_TOKEN` (an API token
+with Cloudflare Pages edit permission) and `account id` becomes `CLOUDFLARE_ACCOUNT_ID`. No
+Cloudflare credential is stored in GitHub.
 
 ## 6. Data model
 
@@ -195,8 +223,8 @@ Defined in `supabase/migrations/20261110000000_init.sql`.
 All tables have RLS on with no policies; grants for `anon` and `authenticated` are revoked.
 
 **Migrations workflow:** add a new timestamped file under `supabase/migrations/`, test it
-locally with `supabase db reset`, then `supabase db push` to production. Push the migration
-**before** deploying code that depends on it (§8.3).
+locally with `supabase db reset`, and merge it with the code that needs it: the release applies it
+to production before that code takes traffic (§8.3). Keep migrations additive.
 
 ## 7. Security model
 
@@ -208,7 +236,8 @@ locally with `supabase db reset`, then `supabase db push` to production. Push th
 | Permissions and flags | Checked on the server for each request. UI hiding is cosmetic. |
 | Direct database access from browsers | Blocked by RLS with no policies plus revoked grants (tested). |
 | Other users' data | Other users' backtests return 404. |
-| Secrets | Railway variables (Alpaca keys, DB URL). The owner keeps the production values in a password manager, never in `.env` files. Nothing secret in the repo or the web bundle. |
+| Secrets | Railway variables (Alpaca keys, DB URL). The owner keeps the production values in a password manager, never in `.env` files. Nothing secret in the repo or the web bundle. The database credential stays in Railway: migrations run there, not in CI ([ADR 0001](adr/0001-railway-applies-migrations-at-deploy.md)). The release workflow's Cloudflare token comes from 1Password, through a secret only the `main`-only `production` environment can read (§5.3). |
+| Release tags | A tag ruleset on `v*` blocks updating or deleting a version tag once the release workflow has pushed it. |
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
 | Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
@@ -230,54 +259,121 @@ See §11.
 Runs on every push to `main` and on every pull request:
 
 - **api job:** `uv sync --frozen` → `ruff check` → `ruff format --check` → `pytest`, with a
-  Postgres 17 service container. That covers 27 tests: engine, Alpaca client and API/database
-  integration.
+  Postgres 17 service container. That covers 34 tests: engine, Alpaca client, API/database
+  integration and the migration runner.
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
+- **changelog job:** on pull requests, `node scripts/check-changelog.mjs` checks that
+  `CHANGELOG.md` has a section for the version the merge will mint (`docs/agents/releases.md`).
+  Dependabot's pull requests pass without one; their changes roll up into the next section. On a
+  push to `main` it passes without checking.
 - **agents job:** `sync-agents.mjs --check` → `check-skills.mjs` → `lint-agent-neutrality.mjs` →
   `check-docs.mjs` → the script tests, all on Node 22 with nothing installed. It fails when the
   agent config mirror is stale, an installed skill differs from `skills-lock.json`, a skill or
   agent source is not tool-neutral, a doc link or the `Doc map` in `docs/agents/docs.md` is out
   of date, or a script test fails.
 
-The `Main branch rules` ruleset makes all three jobs required checks on `main`, with the branch up
+The `Main branch rules` ruleset makes all four jobs required checks on `main`, with the branch up
 to date before merge. It also requires a pull request (merge commits only, review threads
 resolved) and CodeQL code scanning (GitHub's default setup, weekly and on pull requests), and it
 blocks force-pushes and deletion of `main`.
 
 The integration tests run against plain Postgres, using `api/tests/supabase_stub.sql` to stand
-in for the parts of Supabase the migration needs (`auth.users`, the `anon` and `authenticated`
-roles).
+in for the parts of Supabase the migrations need (`auth.users`, the `anon` and `authenticated`
+roles). They apply the migrations with the same runner production uses (§8.3).
 
-### 8.2 Deployments
+### 8.2 Releases and deployments
 
-| Target | Trigger | How |
+Every merge to `main` is a release, and goes to production in this order
+([ADR 0001](adr/0001-railway-applies-migrations-at-deploy.md)):
+
+| Step | Trigger | How |
 |---|---|---|
-| `api` | Push to `main` touching `api/**` | Railway builds `api/Dockerfile`; health check `GET /health` must pass before traffic switches |
-| `price-sync` | Same image, rebuilt on the same pushes | Runs only on its cron schedule |
-| `web` | Push to `main` | Cloudflare Pages runs `pnpm build` in `web/` and serves `dist/` |
-| Database schema | **Manual** | `supabase db push` |
+| Database schema | Every merge to `main` | The pre-deploy command of `api` and `price-sync` applies pending migrations before the new deploy takes over (§8.3) |
+| `api` | Every merge to `main` | Railway builds `api/Dockerfile` from the repository root; health check `GET /health` must pass before traffic switches |
+| `price-sync` | Same image, rebuilt on every merge | Runs only on its cron schedule |
+| Version tag | Every merge to `main` | `release.yml` `tag` job: tags the merge commit `v<major>.<minor>.<build>`, computed by `scripts/next-version.mjs` from `VERSION` and the existing tags |
+| `web` | After the tag, once the API runs the merge | `release.yml` `web` job, below |
 
-### 8.3 Deploy-order rule
+The `web` job polls `https://api.tirelessinvest.com/health` for up to 15 minutes until it reports
+the merge commit, or a later commit that contains it. It then builds the web app with
+`VITE_APP_VERSION` and `VITE_APP_COMMIT` and deploys `web/dist` with `wrangler pages deploy` to the
+Cloudflare Pages project `tirelessinvest`. If the API never reports the commit, the job fails and
+the web app is not deployed, so it never ships ahead of the API it calls. Web deploys run one at a
+time, in merge order.
 
-The schema is migrated by hand, but code deploys automatically. So:
+The tag is minted whether or not the deploy succeeds; a failed deploy is fixed forward with the
+next release. A re-run of the workflow on a tagged commit reuses its tag. The versioning rules
+(release line, roll-up of Dependabot merges) are in `docs/agents/releases.md`.
 
-1. Push the migration first (`supabase db push`).
-2. Then merge the code that needs it.
+The release workflow is the only path to production for the web app: Cloudflare Pages' automatic
+production and preview builds are off, and there are no staging or pull request preview deploys
+(§3.7).
 
-Make migrations additive (add columns or tables; drop them in a later release), so old and new
-code both work during the switch.
+**Railway's "Wait for CI" stays off on both services.** It would hold the API deploy until every
+workflow run on the commit finished, while the release workflow waits for the API, and neither
+would move. The `main` ruleset already requires CI to pass before a merge.
+
+### 8.3 Migrations at deploy
+
+Railway runs `python -m tirelessinvest.jobs.migrate` as the pre-deploy command of both services,
+with their `DATABASE_URL`. The runner reads `supabase/migrations/` from the image
+(`MIGRATIONS_DIR`) and:
+
+- holds a Postgres advisory lock, so the two services' runs take turns;
+- applies each migration not yet recorded, in filename order, each in its own transaction, and
+  stops at the first failure, exiting non-zero so the deploy does not go ahead;
+- records each one in `supabase_migrations.schema_migrations`, the Supabase CLI's own history
+  table, so `supabase migration list` agrees;
+- logs, and tolerates, migrations the database has recorded but the image lacks (an older image
+  against a newer schema).
+
+`python -m tirelessinvest.jobs.migrate --dry-run` lists the pending migrations without applying
+them.
+
+So a migration ships by merging it with the code that needs it. Nobody runs `supabase db push`
+against production after the first-time setup of a new project (§10 step 2). Make migrations
+additive (add columns or tables; drop them in a later release), so the previous deploy keeps
+working while the new one starts, and so does an older image after an emergency rollback.
+
+**Rollback** is a revert: revert the pull request and merge the revert, which is a new release
+(fix forward). A revert does not undo a migration already applied; the schema keeps it, which is
+safe because migrations are additive. Railway's and Cloudflare Pages' own rollback buttons are an
+emergency stop only, followed by a revert.
 
 ### 8.4 Container image (`api/Dockerfile`)
 
+- Built from the repository root, so the image can carry `supabase/migrations/`. The root
+  `.dockerignore` admits only `api/pyproject.toml`, `api/uv.lock`, `api/src` and
+  `supabase/migrations`.
 - `python:3.15-slim` plus a pinned `uv` 0.11.32.
 - Dependencies install in their own layer from `uv.lock` (`--frozen --no-dev`).
+- The migrations sit at `/app/supabase/migrations`, named by `MIGRATIONS_DIR`.
 - Default command: `uvicorn tirelessinvest.main:app --host 0.0.0.0 --port ${PORT:-8000}`.
   It trusts proxy headers so client IPs are correct behind Railway and Cloudflare.
 - The `price-sync` service overrides the start command:
   `python -m tirelessinvest.jobs.sync_prices`.
 
 Railway builds the image on every deploy. To build it locally, from the repository root:
-`docker build -t tirelessinvest-api ./api`.
+`docker build -f api/Dockerfile -t tirelessinvest-api .`.
+
+### 8.5 Railway service settings
+
+The services are configured in Railway's dashboard; the repository holds no Railway config file.
+Both services deploy from `jwh3times/TirelessInvest`, with:
+
+| Setting | `api` | `price-sync` |
+|---|---|---|
+| Builder | Dockerfile | Dockerfile |
+| Root directory | `/` | `/` |
+| Dockerfile path | `api/Dockerfile` | `api/Dockerfile` |
+| Watch paths | none: every release rebuilds both | none |
+| Auto-deploy | on, from `main` | on, from `main` |
+| Wait for CI | **off** (§8.2) | **off** |
+| Pre-deploy command | `python -m tirelessinvest.jobs.migrate` | `python -m tirelessinvest.jobs.migrate` |
+| Start command | the image's default | `python -m tirelessinvest.jobs.sync_prices` |
+| Cron schedule | – | `30 22 * * 1-5` (UTC, §9) |
+| Health check | `/health`, 60 s timeout | – |
+| Restart policy | on failure, 5 retries | never |
 
 ## 9. Scheduled jobs
 
@@ -323,6 +419,9 @@ recognize aren't registered, so a typo isn't synced forever.
    supabase db push
    ```
 
+   This first push is the only manual one: from then on each release applies new migrations
+   (§8.3).
+
 2. Under **Authentication → URL Configuration**, set the Site URL to
    `https://tirelessinvest.com`.
 3. Under **Authentication → SMTP Settings**, configure a custom SMTP provider (e.g. Resend,
@@ -335,34 +434,37 @@ recognize aren't registered, so a typo isn't synced forever.
 
 ### Step 3: Railway
 
-Railway stops reading the config-as-code files below on 2026-12-01; moving off them is tracked in
-[#27](https://github.com/jwh3times/TirelessInvest/issues/27).
-
 1. Create a project from the GitHub repo `jwh3times/TirelessInvest`.
-2. Create the `api` service:
-   - Root Directory `/api`
-   - Config-as-code path `/api/railway.toml`
-3. Create the `price-sync` service:
-   - Root Directory `/api`
-   - Config-as-code path `/api/railway.sync.toml`
-4. Set shared variables on both services (§5.1). Mark the Alpaca keys and `DATABASE_URL` as
+2. Create the `api` and `price-sync` services from the repo, and set each one's settings as in
+   §8.5. Leave **Wait for CI** off.
+3. Set shared variables on both services (§5.1). Mark the Alpaca keys and `DATABASE_URL` as
    sealed/secret.
-5. On `api`, add the custom domain `api.tirelessinvest.com`. Copy the CNAME target and the TXT
+4. On `api`, add the custom domain `api.tirelessinvest.com`. Copy the CNAME target and the TXT
    verification record Railway shows.
 
 ### Step 4: Cloudflare
 
 1. DNS: add the Railway CNAME for `api` (proxied) and the TXT record.
 2. SSL/TLS → Overview: set the mode to **Full**.
-3. Pages: create a project from the repo.
-   - Root directory: `web`
-   - Build command: `pnpm build`
-   - Output directory: `dist`
-   - Variables: as in §5.2
+3. Pages: create the project `tirelessinvest` with production branch `main`. The release workflow
+   builds the web app and uploads it (§8.2), so the project needs no build settings or variables.
+   If it is connected to the GitHub repo, turn off its automatic production and preview builds.
 4. Pages → Custom domains: add `tirelessinvest.com`.
 5. Add a 301 redirect from `www.tirelessinvest.com` to `tirelessinvest.com`.
+6. Create an API token with Cloudflare Pages edit permission for the release workflow.
 
-### Step 5: First run
+### Step 5: GitHub and 1Password
+
+1. In 1Password, store the token and the Cloudflare account ID in the vault `TirelessInvest CI`,
+   item `Cloudflare Pages deploy`, fields `credential` and `account id` (§5.3). Create a service
+   account that can read only that vault.
+2. In the GitHub repo, create the environment `production` with deployment branches limited to
+   `main`. Add the service account token as its secret `OP_SERVICE_ACCOUNT_TOKEN`, and the web
+   build values (§5.2) as its variables.
+3. Rulesets: the `Main branch rules` ruleset requires the `api`, `web`, `changelog` and `agents`
+   checks (§8.1); a tag ruleset on `v*` blocks updating and deleting version tags.
+
+### Step 6: First run
 
 1. Trigger `price-sync` once by hand from Railway, so prices exist before the first backtest.
 2. Create your account in the Supabase dashboard: **Authentication → Users → Add user**, with
@@ -371,7 +473,7 @@ Railway stops reading the config-as-code files below on 2026-12-01; moving off t
    production `DATABASE_URL` exported in your shell (never typed on the command line):
 
    ```bash
-   docker build -t tirelessinvest-api ./api
+   docker build -f api/Dockerfile -t tirelessinvest-api .
    ```
 
    ```bash
@@ -380,9 +482,11 @@ Railway stops reading the config-as-code files below on 2026-12-01; moving off t
 
 4. Sign out and back in. The Admin tab should appear.
 
-### Step 6: Smoke test
+### Step 7: Smoke test
 
-- `GET https://api.tirelessinvest.com/health` returns `{"status":"ok"}`.
+- `GET https://api.tirelessinvest.com/health` returns `{"status":"ok","commit":"<the deployed commit>"}`.
+- After a merge, the Release workflow run is green, the merge commit carries its `v*` tag, and the
+  web app's footer shows `v<version> · <short commit>` for it.
 - A buy-and-hold SPY backtest from 2016 to today shows SPY results with no "synthetic data"
   warning.
 - A second test account can't see the first account's backtests.
@@ -392,7 +496,8 @@ Railway stops reading the config-as-code files below on 2026-12-01; moving off t
 | Area | Current state | Gap / next step |
 |---|---|---|
 | Logs | Railway service logs (API logs requests and rejected tokens); Supabase logs | Nothing aggregated or searchable long-term |
-| Health | Railway health check on `/health` | No uptime monitor. Add a free external check on `/health` and the Pages URL. |
+| Health | Railway health check on `/health`, which also reports the running commit | No uptime monitor. Add a free external check on `/health` and the Pages URL. |
+| Releases | The Release workflow run for each merge; the `v*` tags; the footer's version and commit | No alerting on a failed run |
 | Alerting | None | Alert on a failed `price-sync` run and on repeated API 5xx errors |
 | Backups | Supabase Pro includes daily backups | Confirm retention on the chosen plan; test a restore once |
 | Errors | Logged only | Consider Sentry (free tier) for API and web |
@@ -405,6 +510,8 @@ Railway stops reading the config-as-code files below on 2026-12-01; moving off t
 | Alpaca down | Backtests needing a new symbol fail (502); stored symbols still work; nightly sync fails | The next nightly run recovers automatically |
 | Supabase paused (free plan) | Everything fails | Use Pro, or accept pausing during development |
 | Supabase Auth email limits | Other users can't confirm sign-up | Custom SMTP (§10 step 2.3) |
+| A migration fails at deploy | The new `api` and `price-sync` deploys stop and the previous ones keep running; the release's `web` job fails after 15 minutes, so the web app stays on the previous release | Fix forward: merge a fix for the migration (§8.3) |
+| The API deploy fails or is slow | The `web` job fails after 15 minutes without deploying | Check the `api` deploy in Railway; fix forward, or re-run the workflow once the API is up |
 | JWT signing key rotated | Tokens briefly rejected | The API caches published keys for 10 minutes; wait about 20 minutes after creating a standby key before rotating |
 | Very long backtest | Request takes up to about 16s | Within limits today; move to a queued job if it grows (§3.7) |
 

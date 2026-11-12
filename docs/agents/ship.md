@@ -19,5 +19,5 @@ which needs the Postgres service. The `changelog` job runs the `Changelog check`
 skipping Dependabot's.
 
 The `Main branch rules` ruleset on `main` requires a PR (merge commits only, review threads
-resolved), the `api`, `web` and `agents` checks passing on a branch up to date with `main`, and
+resolved), the `api`, `web`, `changelog` and `agents` checks passing on a branch up to date with `main`, and
 CodeQL code scanning (`gh api repos/jwh3times/TirelessInvest/rules/branches/main`).

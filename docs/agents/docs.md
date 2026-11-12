@@ -11,9 +11,8 @@
   operations. Update when `api/Dockerfile`, `.dockerignore`, `supabase/`, `.github/workflows/`,
   `.github/dependabot.yml` or an environment variable changes, or a GitHub repository setting does (the `main` ruleset,
   CodeQL setup, merge options).
-- `CHANGELOG.md`: one dated section per version a merge mints, written by `ship` before the merge
-  and checked by the `changelog` CI job (`docs/agents/releases.md`). `frozen` for released
-  sections: never rewrite one after its tag exists.
+- `CHANGELOG.md`: one dated section per version a merge mints, checked by the `changelog` CI job
+  (`docs/agents/releases.md`). `ship-owned`, like the `VERSION` file.
 - `GLOSSARY.md`: the project's own vocabulary, one term per entry with the words to avoid. Update
   when a design session settles a term.
 - `docs/adr/*.md`: architecture decision records, one decision each with the reason it was made.
@@ -26,7 +25,7 @@
   never edit them here.
 - `CLAUDE.md`: imports `AGENTS.md` for Claude Code. `owner-only`.
 - `docs/agents/*.md`: settings the shared skills read. Update when this repository's process
-  changes.
+  changes, or the `main` ruleset's required checks do (`ship.md` lists them).
 - `.agents/skills/**`: installed skills, listed in `skills-lock.json`. `frozen`: a reinstall
   overwrites them, and `scripts/check-skills.mjs` fails on an edited copy.
 

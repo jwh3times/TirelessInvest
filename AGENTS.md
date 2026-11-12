@@ -15,6 +15,8 @@ node scripts/sync-agents.mjs --check     # agent config is in sync
 node scripts/check-skills.mjs            # installed skills match skills-lock.json
 node scripts/lint-agent-neutrality.mjs   # skill and agent sources read correctly from both trees
 node scripts/check-docs.mjs              # doc links resolve and docs/agents/docs.md maps every doc
+node scripts/next-version.mjs            # the version the next merge to main will mint
+node scripts/check-changelog.mjs         # CHANGELOG.md has a section for that version
 node --test "scripts/*.test.mjs"         # tests for the scripts above
 ```
 
@@ -65,7 +67,7 @@ when Claude Code asks and sign in from `/mcp`; in Codex, trust the project, then
 
 - **`context7`**: current docs for any library or service the code calls. The stack is newer than
   training data, so check here before relying on what you remember.
-- **`cloudflare-api`**: Cloudflare Pages builds and DNS for `tirelessinvest.com`.
+- **`cloudflare-api`**: Cloudflare Pages deployments and DNS for `tirelessinvest.com`.
 - **`railway`**: status, logs, metrics and config for the `api` and `price-sync` services. These are
   production, and the server can also change them: deploys, variables, services, volumes, domains
   and Railway's own feature flags (not the app's, which live in Postgres). Use its read tools; make

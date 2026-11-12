@@ -66,6 +66,9 @@ Cloudflare Pages (React)  ──JWT──▶  Railway: api (FastAPI)  ──▶ 
   Adjusted prices change backwards after every dividend or split, so appending only new
   days would corrupt the series.
 - The API also backfills unseen symbols on demand when a backtest asks for them.
+- Every merge to `main` is a release with its own `vX.Y.Z` version. Railway applies pending
+  database migrations before the new API takes traffic, and the web app deploys only once the
+  API reports the merge commit. The web app's footer shows the version and commit it runs.
 
 ## Local development
 
@@ -115,8 +118,9 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres uv run
 ```
 
 The second form also runs API + database integration tests. It creates and drops a scratch
-database on whatever server you point it at. CI runs both suites, the frontend build, and the
-agent-config and docs checks listed in [AGENTS.md](AGENTS.md).
+database on whatever server you point it at. CI runs both suites, the frontend build, a check that
+`CHANGELOG.md` names the version a pull request will mint, and the agent-config and docs checks
+listed in [AGENTS.md](AGENTS.md).
 
 ## Deploying
 
@@ -133,6 +137,8 @@ agent-config and docs checks listed in [AGENTS.md](AGENTS.md).
    supabase db push
    ```
 
+   This first push is the only manual one: after it, each release applies new migrations.
+
 3. Under **Authentication → URL Configuration**, set the Site URL to your frontend domain.
 4. Under **Connect**, copy the **Session pooler** connection string. Railway reaches it over
    IPv4; the direct connection string is IPv6-only.
@@ -147,22 +153,28 @@ Full step-by-step setup, DNS and operations details are in
 
 ### 2. Railway (two services from this repo)
 
-| Service | Root directory | Config-as-code path | Notes |
-|---|---|---|---|
-| `api` | `/api` | `/api/railway.toml` | Generate a public domain, e.g. `api.yourdomain.com` |
-| `price-sync` | `/api` | `/api/railway.sync.toml` | Cron, weekdays 22:30 UTC, exits when done |
+Both services build `api/Dockerfile` from the repository root, and run
+`python -m tirelessinvest.jobs.migrate` as their pre-deploy command. Their settings live in
+Railway's dashboard, recorded in
+[docs/INFRASTRUCTURE.md §8.5](docs/INFRASTRUCTURE.md#85-railway-service-settings).
+
+| Service | Start command | Notes |
+|---|---|---|
+| `api` | the image's default | Generate a public domain, e.g. `api.yourdomain.com` |
+| `price-sync` | `python -m tirelessinvest.jobs.sync_prices` | Cron, weekdays 22:30 UTC, exits when done |
 
 Shared variables for both services: `DATABASE_URL` (session pooler), `SUPABASE_URL`,
 `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY`. Only the API needs `CORS_ORIGINS`, set to your
 frontend origin.
 
-### 3. Cloudflare Pages
+### 3. Cloudflare Pages and the release workflow
 
-- Root directory: `web`
-- Build command: `pnpm build`
-- Output directory: `dist`
-- Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (the publishable key,
-  which is safe in a browser), `VITE_API_URL`.
+The release workflow (`.github/workflows/release.yml`) tags each merge to `main`, waits for the
+API to run it, then builds the web app and uploads it to Cloudflare Pages with Wrangler. The Pages
+project runs no builds of its own. The workflow reads `VITE_SUPABASE_URL`,
+`VITE_SUPABASE_ANON_KEY` (the publishable key, which is safe in a browser) and `VITE_API_URL`
+from the GitHub `production` environment, and its Cloudflare token from 1Password; see
+[docs/INFRASTRUCTURE.md §5.3](docs/INFRASTRUCTURE.md#53-release-workflow-github-production-environment).
 
 `public/_redirects` handles client-side routes.
 
