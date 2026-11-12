@@ -55,6 +55,29 @@ no ready issue exists. `/ask-matt` maps the flow itself.
 
 <!-- /shared:development-flow -->
 
+## MCP servers
+
+The shared servers are listed in `.mcp.json` (Claude Code) and `.codex/config.toml` (Codex, which
+loads it only in a trusted project); change both together. Each signs in per person with OAuth or
+needs no credentials, so neither file holds a secret.
+
+- **`context7`**: current docs for any library or service the code calls. The stack is newer than
+  training data, so check here before relying on what you remember.
+- **`cloudflare-api`**: Cloudflare Pages builds and DNS for `tirelessinvest.com`.
+- **`railway`**: status and logs for the `api` and `price-sync` services. These are production, so
+  redeploy, accept a deploy or change a feature flag only when the user asks.
+- **`supabase-local`**: the local `supabase start` stack, so it answers only while that runs. Schema
+  changes go in `supabase/migrations/`.
+
+Left out on purpose:
+
+- **Supabase's hosted server.** The one Supabase project is production, and Supabase advises
+  against pointing its MCP at production data.
+- **1Password.** Production secrets live in the TirelessInvest vault; reach them with `op run` or
+  `op read`, which keep secret values out of the model's context.
+- **GitHub and GitKraken.** `git` and `gh` already cover them, and the flow skills use those.
+- **Alpaca.** Its server can place orders, and live trading waits for the `live_trading` flag.
+
 ## Agent skills
 
 Skills are authored in `.agents/skills/` (Codex reads it directly); `.claude/skills/` is a
