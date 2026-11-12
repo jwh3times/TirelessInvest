@@ -59,7 +59,9 @@ no ready issue exists. `/ask-matt` maps the flow itself.
 
 The shared servers are listed in `.mcp.json` (Claude Code) and `.codex/config.toml` (Codex, which
 loads it only in a trusted project); change both together. Each signs in per person with OAuth or
-needs no credentials, so neither file holds a secret.
+needs no credentials, so neither file holds a secret. Once per person: approve the project's servers
+when Claude Code asks and sign in from `/mcp`; in Codex, trust the project, then run
+`codex mcp login <name>` for `cloudflare-api` and `railway`.
 
 - **`context7`**: current docs for any library or service the code calls. The stack is newer than
   training data, so check here before relying on what you remember.
