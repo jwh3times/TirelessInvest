@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,6 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .db import close_pool
 from .routes import admin, backtests, catalog
+
+
+def running_commit() -> str | None:
+    """The commit Railway built this deploy from. The version is the tag on that commit: Railway
+    builds before the tag exists, so the API cannot know its own version (ADR 0001)."""
+    return os.environ.get("RAILWAY_GIT_COMMIT_SHA") or None
 
 
 @asynccontextmanager
@@ -20,7 +27,7 @@ async def lifespan(_: FastAPI):
 def create_app() -> FastAPI:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     settings = get_settings()
-    app = FastAPI(title="TirelessInvest API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="TirelessInvest API", version=running_commit() or "dev", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -30,7 +37,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["ops"])
     def health() -> dict:
-        return {"status": "ok"}
+        return {"status": "ok", "commit": running_commit()}
 
     app.include_router(catalog.router)
     app.include_router(backtests.router)
