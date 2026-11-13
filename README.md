@@ -28,6 +28,10 @@ with simply buying and holding an index fund under the same costs.
     (delisting).
   - Metrics: CAGR, volatility, Sharpe, Sortino, max drawdown and its duration, Calmar, beta,
     alpha, turnover, costs, monthly returns.
+  - A **verdict** on every report: the strategy is better risk-adjusted when its Sharpe ratio
+    beats the benchmark's over the same dates and costs, with the CAGR difference as context
+    ([PRD §6.4](docs/PRD.md#64-running-a-backtest)). With no volatility a Sharpe ratio is
+    undefined, and the report says no comparison is possible.
 - **Strategies:**
 
   | Strategy | What it does |

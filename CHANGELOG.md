@@ -13,6 +13,25 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.2.0] - 2026-11-13
+
+### Added
+
+- Every backtest report from the API carries a `verdict`: the strategy's and the benchmark's
+  Sharpe ratios over the same dates and costs, whether the strategy is better risk-adjusted,
+  the difference in annual return (CAGR), and whether a comparison was possible. Each item in
+  `GET /backtests` carries it too, and backtests saved before this release show one derived from
+  their stored results.
+- The history list has a Verdict column beside the CAGR difference against the benchmark.
+
+### Changed
+
+- The results headline judges a strategy risk-adjusted: it is better than SPY when its Sharpe
+  ratio beats SPY's, so a strategy that earned more only by taking more risk is no longer shown as
+  ahead. The sentence still states how much more or less per year it earned, next to both
+  volatilities and Sharpe ratios. When a Sharpe ratio is undefined, for example with no volatility
+  over a very short period, it says no risk-adjusted comparison is possible.
+
 
 ## [0.1.1] - 2026-11-12
 
