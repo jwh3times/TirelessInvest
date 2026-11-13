@@ -13,6 +13,14 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.2.1] - 2026-11-13
+
+### Changed
+
+- The product requirements (PRD §6.4) record the risk-adjusted verdict as built: the API decides
+  it by Sharpe ratio against SPY's over the same dates and costs, and the headline sentence's
+  example matches what the app now shows.
+
 ## [0.2.0] - 2026-11-13
 
 ### Added
