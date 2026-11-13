@@ -14,6 +14,15 @@ changes raise the minor version.
 No unreleased changes.
 
 
+## [0.1.1] - 2026-11-12
+
+### Changed
+
+- `/what-next` puts an active handoff first: when `handoff_map.json` names one for this
+  repository, the report leads with it and recommends `/lets-go`, and one whose document has not
+  reached this machine is shown as pending. It still changes nothing, and a machine without the
+  handoffs config skips the check.
+
 ## [0.1.0] - 2026-11-12
 
 The first versioned release. Everything below it existed before versioning began: the backtesting
@@ -25,7 +34,7 @@ feature flags and an audit log, and the nightly price sync.
 - Every merge to `main` is a release. It is tagged `v<major>.<minor>.<build>` and reaches production
   without a manual step: Railway applies pending database migrations before the new API takes
   traffic, and the web app is deployed only once the API reports the new release.
-- The web app's footer shows the release it belongs to, as `v0.1.0 · <short commit>`.
+- The web app's footer shows the release it belongs to, as `v0.1.0 ï¿½ <short commit>`.
 - `GET /health` reports the commit the API is running, as `commit`.
 - This changelog, with one section per release, checked on every pull request.
 
