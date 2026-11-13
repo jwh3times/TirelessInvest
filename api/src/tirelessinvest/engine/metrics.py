@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -78,6 +80,35 @@ def performance(
             )
             out["correlation"] = _finite(float(r.corr(b)))
     return out
+
+
+def risk_adjusted_verdict(equity: pd.Series, benchmark: pd.Series) -> dict[str, Any]:
+    """Judge a strategy against its benchmark by Sharpe ratio, over the dates both cover."""
+    both = pd.concat([equity, benchmark], axis=1, join="inner").dropna()
+    return verdict_from_summaries(performance(both.iloc[:, 0]), performance(both.iloc[:, 1]))
+
+
+def verdict_from_summaries(
+    strategy: Mapping[str, Any], benchmark: Mapping[str, Any]
+) -> dict[str, Any]:
+    """The verdict from two `performance` summaries already measured over the same dates.
+
+    The strategy is better risk-adjusted when its Sharpe ratio is higher than the benchmark's.
+    When either Sharpe ratio is undefined (no volatility) no comparison is possible, and
+    `better_risk_adjusted` is None rather than a meaningless True or False.
+    """
+    sharpe, bench_sharpe = strategy.get("sharpe"), benchmark.get("sharpe")
+    cagr, bench_cagr = strategy.get("cagr"), benchmark.get("cagr")
+    comparable = sharpe is not None and bench_sharpe is not None
+    return {
+        "comparable": comparable,
+        "better_risk_adjusted": sharpe > bench_sharpe if comparable else None,
+        "sharpe": sharpe,
+        "benchmark_sharpe": bench_sharpe,
+        "cagr_difference": cagr - bench_cagr
+        if cagr is not None and bench_cagr is not None
+        else None,
+    }
 
 
 def drawdown_series(equity: pd.Series) -> pd.Series:

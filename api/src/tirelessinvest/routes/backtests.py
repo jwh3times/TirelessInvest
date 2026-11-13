@@ -14,6 +14,7 @@ from ..config import get_settings
 from ..db import connection
 from ..engine.backtest import BacktestError, BacktestRequest, run_backtest
 from ..engine.data import PriceStore, SyntheticPriceStore
+from ..engine.metrics import verdict_from_summaries
 from ..engine.strategies import STRATEGIES
 from ..market.alpaca import AlpacaClient, AlpacaError
 from ..market.store import PostgresPriceStore
@@ -70,6 +71,7 @@ def create_backtest(
 
     summary = {k: report["summary"].get(k) for k in SUMMARY_KEYS}
     summary["benchmark_cagr"] = report["benchmark"]["summary"].get("cagr")
+    summary["verdict"] = report["verdict"]
     with connection() as conn:
         row = conn.execute(
             """
@@ -110,13 +112,34 @@ def list_backtests(
                    request -> 'universe' as universe,
                    request ->> 'start_date' as start_date,
                    request ->> 'end_date' as end_date,
-                   request ->> 'starting_cash' as starting_cash
+                   request ->> 'starting_cash' as starting_cash,
+                   -- Rows saved before the verdict existed derive one, which needs the
+                   -- benchmark's Sharpe from the large report; other rows never read it.
+                   case when summary ? 'verdict' then null
+                        else report #> '{benchmark,summary}' end as legacy_benchmark
             from public.backtests where user_id = %s
             order by created_at desc limit %s offset %s
             """,
             (user.id, limit, offset),
         ).fetchall()
-    return [{**r, "id": str(r["id"])} for r in rows]
+    return [_list_item(r) for r in rows]
+
+
+def _list_item(row: dict) -> dict:
+    summary = dict(row["summary"])
+    verdict = summary.pop("verdict", None)
+    if verdict is None:
+        verdict = verdict_from_summaries(summary, row["legacy_benchmark"])
+    item = {k: v for k, v in row.items() if k != "legacy_benchmark"}
+    return {**item, "id": str(row["id"]), "summary": summary, "verdict": verdict}
+
+
+def _with_verdict(report: dict) -> dict:
+    """Reports saved before the verdict existed get one derived from their stored summaries."""
+    if "verdict" in report:
+        return report
+    verdict = verdict_from_summaries(report["summary"], report["benchmark"]["summary"])
+    return {**report, "verdict": verdict}
 
 
 def _owned(conn, backtest_id: UUID, user: CurrentUser) -> dict:
@@ -136,7 +159,7 @@ def get_backtest(backtest_id: UUID, user: CurrentUser = Depends(current_user)) -
         "name": row["name"],
         "created_at": row["created_at"],
         "duration_ms": row["duration_ms"],
-        "report": row["report"],
+        "report": _with_verdict(row["report"]),
     }
 
 

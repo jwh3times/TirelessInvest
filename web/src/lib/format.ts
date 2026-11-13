@@ -1,3 +1,5 @@
+import type { Verdict } from "./types";
+
 const money0 = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -22,3 +24,11 @@ export const date = (iso: string | null | undefined) =>
 
 export const dateTime = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "–";
+
+/** How the API's verdict judged a strategy against its benchmark, in words. */
+export const riskAdjustedLabel = (v: Verdict) =>
+  !v.comparable
+    ? "no risk-adjusted comparison possible"
+    : v.better_risk_adjusted
+      ? "better risk-adjusted"
+      : "worse risk-adjusted";

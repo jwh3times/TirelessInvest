@@ -11,7 +11,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .data import Bars, PriceStore
-from .metrics import drawdown_series, monthly_returns, performance
+from .metrics import drawdown_series, monthly_returns, performance, risk_adjusted_verdict
 from .risk import RISK_PRESETS, RiskSettings
 from .simulator import Costs, SimulationResult, simulate
 from .strategies import Rebalance, build_strategy
@@ -227,6 +227,7 @@ def _report(
             "symbol": req.benchmark,
             "summary": performance(bench_equity),
         },
+        "verdict": risk_adjusted_verdict(equity, bench_equity),
         "series": {
             "dates": [d.date().isoformat() for d in equity.index],
             "equity": _round(equity, 2),

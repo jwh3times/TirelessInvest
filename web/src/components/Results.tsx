@@ -1,4 +1,4 @@
-import { money, num, pct, signedPct } from "../lib/format";
+import { money, num, pct, riskAdjustedLabel, signedPct } from "../lib/format";
 import type { Report } from "../lib/types";
 import { DrawdownChart, EquityChart, MonthlyReturns } from "./Charts";
 
@@ -17,11 +17,36 @@ function Tile({ label, value, compare, hint }: {
   );
 }
 
+/** The headline's second sentence, worded from the API's verdict. */
+function VerdictSentence({ report }: { report: Report }) {
+  const { verdict: v, summary: s } = report;
+  const b = report.benchmark.summary;
+  const bench = report.benchmark.symbol;
+  const diff = v.cagr_difference;
+  return (
+    <>
+      {" "}
+      {diff == null ? (
+        <>Against simply holding {bench}</>
+      ) : (
+        <>
+          That is <strong>{pct(Math.abs(diff))} per year {diff >= 0 ? "more" : "less"}</strong> than
+          simply holding {bench}
+        </>
+      )}
+      , with {pct(s.volatility)} volatility against {pct(b.volatility)}:{" "}
+      <strong>{riskAdjustedLabel(v)}</strong>
+      {v.comparable
+        ? ` (Sharpe ${num(v.sharpe)} against ${num(v.benchmark_sharpe)}).`
+        : ", because a Sharpe ratio is undefined when a return series has no volatility."}
+    </>
+  );
+}
+
 export function Results({ report }: { report: Report }) {
   const s = report.summary;
   const b = report.benchmark.summary;
   const bench = report.benchmark.symbol;
-  const beat = s.cagr != null && b.cagr != null ? s.cagr - b.cagr : null;
 
   return (
     <div className="results">
@@ -34,10 +59,7 @@ export function Results({ report }: { report: Report }) {
 
       <p className="verdict">
         {money(s.start_value)} became <strong>{money(s.end_value)}</strong> ({signedPct(s.total_return)}).
-        {beat != null && (
-          <> That is <strong>{pct(Math.abs(beat))} per year</strong>{" "}
-          {beat >= 0 ? "ahead of" : "behind"} simply holding {bench}.</>
-        )}
+        <VerdictSentence report={report} />
       </p>
 
       <div className="tiles">

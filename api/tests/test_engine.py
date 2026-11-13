@@ -6,7 +6,7 @@ import pytest
 
 from tirelessinvest.engine.backtest import BacktestError, BacktestRequest, run_backtest
 from tirelessinvest.engine.data import Bars, SyntheticPriceStore, synthetic_bars
-from tirelessinvest.engine.metrics import performance
+from tirelessinvest.engine.metrics import performance, risk_adjusted_verdict
 from tirelessinvest.engine.risk import RiskSettings, apply_risk
 from tirelessinvest.engine.simulator import Costs, decision_days, simulate
 from tirelessinvest.engine.strategies import STRATEGIES, Strategy, build_strategy
@@ -127,6 +127,58 @@ def test_metrics_on_known_curve():
     m = performance(pd.Series([100.0, 110.0, 99.0, 121.0], index=idx))
     assert m["total_return"] == pytest.approx(0.21)
     assert m["max_drawdown"] == pytest.approx(-0.1)
+
+
+def alternating_curve(up: float, down: float, days: int = 253, start: str = "2020-01-01"):
+    """An equity curve whose daily returns alternate between `up` and `down`."""
+    returns = np.where(np.arange(days - 1) % 2 == 0, up, down)
+    values = 100.0 * np.cumprod(np.concatenate([[1.0], 1.0 + returns]))
+    return pd.Series(values, index=pd.bdate_range(start, periods=days))
+
+
+def alternating_sharpe(up: float, down: float, n: int = 252) -> float:
+    """Sharpe (risk-free 0, annualised over 252 days) of n alternating daily returns, by hand."""
+    mean, std = (up + down) / 2, abs(up - down) / 2 * (n / (n - 1)) ** 0.5
+    return mean / std * 252**0.5
+
+
+CALM = (0.001, 0.0)  # earns little, barely moves
+WILD = (0.02, -0.016)  # earns more, swings hard
+
+
+def test_verdict_prefers_higher_sharpe_even_with_lower_cagr():
+    v = risk_adjusted_verdict(alternating_curve(*CALM), alternating_curve(*WILD))
+    assert v["comparable"] is True
+    assert v["better_risk_adjusted"] is True
+    assert v["sharpe"] == pytest.approx(alternating_sharpe(*CALM))
+    assert v["benchmark_sharpe"] == pytest.approx(alternating_sharpe(*WILD))
+    assert v["cagr_difference"] < 0  # the CAGR shortfall is still reported
+
+
+def test_verdict_reports_worse_when_sharpe_is_lower_despite_higher_cagr():
+    v = risk_adjusted_verdict(alternating_curve(*WILD), alternating_curve(*CALM))
+    assert v["comparable"] is True
+    assert v["better_risk_adjusted"] is False
+    assert v["cagr_difference"] > 0
+
+
+def test_verdict_is_not_comparable_when_a_sharpe_is_undefined():
+    flat = pd.Series(100.0, index=pd.bdate_range("2020-01-01", periods=5))
+    v = risk_adjusted_verdict(alternating_curve(*CALM, days=5), flat)
+    assert v["comparable"] is False
+    assert v["better_risk_adjusted"] is None
+    assert v["benchmark_sharpe"] is None
+    assert v["cagr_difference"] is not None
+
+
+def test_verdict_measures_the_benchmark_over_the_strategys_dates_only():
+    # The benchmark's series starts 100 days earlier, with a crash the strategy never faced.
+    crash = alternating_curve(-0.03, -0.01, days=101, start="2019-08-14")
+    later = alternating_curve(*WILD, start=crash.index[-1].strftime("%Y-%m-%d"))
+    bench = pd.concat([crash, later.iloc[1:] / 100.0 * crash.iloc[-1]])
+    strategy = alternating_curve(*CALM, start=crash.index[-1].strftime("%Y-%m-%d"))
+    v = risk_adjusted_verdict(strategy, bench)
+    assert v["benchmark_sharpe"] == pytest.approx(alternating_sharpe(*WILD))
 
 
 @pytest.mark.parametrize("key", sorted(STRATEGIES))
