@@ -34,7 +34,7 @@ feature flags and an audit log, and the nightly price sync.
 - Every merge to `main` is a release. It is tagged `v<major>.<minor>.<build>` and reaches production
   without a manual step: Railway applies pending database migrations before the new API takes
   traffic, and the web app is deployed only once the API reports the new release.
-- The web app's footer shows the release it belongs to, as `v0.1.0 ï¿½ <short commit>`.
+- The web app's footer shows the release it belongs to, as `v0.1.0 · <short commit>`.
 - `GET /health` reports the commit the API is running, as `commit`.
 - This changelog, with one section per release, checked on every pull request.
 
