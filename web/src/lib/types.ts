@@ -65,10 +65,23 @@ export interface BacktestRequest {
 
 export type Metrics = Record<string, number | null>;
 
+/** The API's risk-adjusted judgement of a strategy against its benchmark, over the same dates. */
+export interface Verdict {
+  /** False when a Sharpe ratio is undefined, e.g. no volatility over a very short period. */
+  comparable: boolean;
+  /** Higher Sharpe than the benchmark's; null when no comparison is possible. */
+  better_risk_adjusted: boolean | null;
+  sharpe: number | null;
+  benchmark_sharpe: number | null;
+  /** Strategy CAGR minus benchmark CAGR, as context for the verdict. */
+  cagr_difference: number | null;
+}
+
 export interface Report {
   config: BacktestRequest & { rebalance: Rebalance; risk: RiskSettings; symbols: string[] };
   summary: Metrics;
   benchmark: { symbol: string; summary: Metrics };
+  verdict: Verdict;
   series: {
     dates: string[];
     equity: number[];
@@ -113,6 +126,7 @@ export interface BacktestListItem {
   end_date: string;
   starting_cash: string;
   summary: Metrics;
+  verdict: Verdict;
 }
 
 export interface AdminUser {

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, send } from "../lib/api";
-import { dateTime, money, pct } from "../lib/format";
+import { dateTime, money, pct, riskAdjustedLabel, signedPct } from "../lib/format";
 import type { BacktestListItem } from "../lib/types";
 
 export function HistoryPage() {
@@ -28,15 +28,13 @@ export function HistoryPage() {
             <tr>
               <th>Name / strategy</th><th>Universe</th><th>Period</th>
               <th className="num">Deposit</th><th className="num">Final</th>
-              <th className="num">CAGR</th><th className="num">vs bench</th>
+              <th className="num">CAGR</th><th className="num">vs bench</th><th>Verdict</th>
               <th className="num">Max DD</th><th>Run</th><th />
             </tr>
           </thead>
           <tbody>
             {q.data!.map((b) => {
               const s = b.summary;
-              const excess = s.cagr != null && s.benchmark_cagr != null
-                ? s.cagr - s.benchmark_cagr : null;
               return (
                 <tr key={b.id}>
                   <td><Link to={`/backtests/${b.id}`}>{b.name || b.strategy}</Link></td>
@@ -47,7 +45,8 @@ export function HistoryPage() {
                   <td className="num">{money(Number(b.starting_cash))}</td>
                   <td className="num">{money(s.end_value)}</td>
                   <td className="num">{pct(s.cagr)}</td>
-                  <td className="num">{excess == null ? "–" : `${excess >= 0 ? "+" : ""}${pct(excess)}`}</td>
+                  <td className="num">{signedPct(b.verdict.cagr_difference)}</td>
+                  <td className="small">{riskAdjustedLabel(b.verdict)}</td>
                   <td className="num">{pct(s.max_drawdown)}</td>
                   <td className="small muted">{dateTime(b.created_at)}</td>
                   <td>

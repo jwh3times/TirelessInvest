@@ -83,6 +83,54 @@ def test_backtest_lifecycle_and_isolation(client, db):
     assert client.get("/backtests", headers=auth(alice)).json() == []
 
 
+VERDICT_KEYS = {
+    "comparable",
+    "better_risk_adjusted",
+    "sharpe",
+    "benchmark_sharpe",
+    "cagr_difference",
+}
+
+
+def assert_well_formed_verdict(verdict: dict, summary: dict, benchmark: dict) -> None:
+    assert set(verdict) == VERDICT_KEYS
+    assert verdict["comparable"] is True
+    assert verdict["sharpe"] == pytest.approx(summary["sharpe"])
+    assert verdict["benchmark_sharpe"] == pytest.approx(benchmark["sharpe"])
+    assert verdict["better_risk_adjusted"] is (summary["sharpe"] > benchmark["sharpe"])
+    assert verdict["cagr_difference"] == pytest.approx(summary["cagr"] - benchmark["cagr"])
+
+
+def test_backtest_report_carries_a_risk_adjusted_verdict(client, db):
+    _, token = make_user(db)
+    created = client.post("/backtests", json=BACKTEST, headers=auth(token))
+    assert created.status_code == 201, created.text
+    report = created.json()["report"]
+    assert_well_formed_verdict(report["verdict"], report["summary"], report["benchmark"]["summary"])
+
+    listed = client.get("/backtests", headers=auth(token)).json()
+    assert listed[0]["verdict"] == report["verdict"]
+
+
+def test_backtest_saved_before_the_verdict_still_shows_one(client, db):
+    _, token = make_user(db)
+    backtest_id = client.post("/backtests", json=BACKTEST, headers=auth(token)).json()["id"]
+    # Make the row look like one saved before verdicts existed.
+    db.execute(
+        """
+        update public.backtests
+        set report = report - 'verdict', summary = summary - 'verdict'
+        where id = %s
+        """,
+        (backtest_id,),
+    )
+
+    report = client.get(f"/backtests/{backtest_id}", headers=auth(token)).json()["report"]
+    assert_well_formed_verdict(report["verdict"], report["summary"], report["benchmark"]["summary"])
+    listed = client.get("/backtests", headers=auth(token)).json()
+    assert listed[0]["verdict"] == report["verdict"]
+
+
 def test_invalid_backtest_is_422(client, db):
     _, token = make_user(db)
     bad = {**BACKTEST, "end_date": "2018-01-01"}
