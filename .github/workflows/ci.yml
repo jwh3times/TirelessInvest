@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Every job only reads the repository (the changelog job reads tags), so the token gets nothing
+# more. Releases, which push tags, run in release.yml with their own permissions.
+permissions:
+  contents: read
+
 jobs:
   api:
     runs-on: ubuntu-latest
