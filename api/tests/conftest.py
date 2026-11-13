@@ -18,25 +18,54 @@ JWT_SECRET = "test-secret-at-least-32-characters-long!!"
 SUPABASE_URL = "http://supabase.test"
 
 
-@pytest.fixture(scope="session")
-def database_url():
+MIGRATIONS = ROOT / "supabase" / "migrations"
+
+
+def _admin_url() -> str:
     admin_url = os.environ.get("TEST_DATABASE_URL")
     if not admin_url:
         pytest.skip("TEST_DATABASE_URL not set")
+    return admin_url
+
+
+def _create_stubbed_database(admin_url: str) -> tuple[str, str]:
+    """Create an empty database holding only the Supabase stand-ins; return (name, url)."""
     name = f"tirelessinvest_test_{uuid.uuid4().hex[:8]}"
     with psycopg.connect(admin_url, autocommit=True) as conn:
         conn.execute(f'create database "{name}"')
     url = admin_url.rsplit("/", 1)[0] + f"/{name}"
     with psycopg.connect(url, autocommit=True) as conn:
         conn.execute((Path(__file__).parent / "supabase_stub.sql").read_text())
-        for migration in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
-            conn.execute(migration.read_text())
+    return name, url
+
+
+def _drop_database(admin_url: str, name: str) -> None:
+    with psycopg.connect(admin_url, autocommit=True) as conn:
+        conn.execute(f'drop database "{name}" with (force)')
+
+
+@pytest.fixture(scope="session")
+def database_url():
+    admin_url = _admin_url()
+    name, url = _create_stubbed_database(admin_url)
+    # The same runner Railway's pre-deploy step uses, so every integration test exercises it.
+    from tirelessinvest.jobs.migrate import apply_migrations
+
+    apply_migrations(url, MIGRATIONS)
     yield url
     from tirelessinvest.db import close_pool
 
     close_pool()
-    with psycopg.connect(admin_url, autocommit=True) as conn:
-        conn.execute(f'drop database "{name}" with (force)')
+    _drop_database(admin_url, name)
+
+
+@pytest.fixture
+def empty_database_url():
+    """A database with the Supabase stand-ins and no migrations applied, dropped afterwards."""
+    admin_url = _admin_url()
+    name, url = _create_stubbed_database(admin_url)
+    yield url
+    _drop_database(admin_url, name)
 
 
 @pytest.fixture(scope="session")

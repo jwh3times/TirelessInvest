@@ -1,0 +1,8 @@
+# The API image builds from the repository root (api/Dockerfile) so that it can carry
+# supabase/migrations for the pre-deploy migration step. Allow only what the image copies.
+*
+!api/pyproject.toml
+!api/uv.lock
+!api/src
+!supabase/migrations
+**/__pycache__

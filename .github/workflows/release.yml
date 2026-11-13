@@ -1,0 +1,158 @@
+name: Release
+
+# Every merge to main is a release (GLOSSARY.md): it mints the next version and goes to
+# production in a fixed order (docs/adr/0001-railway-applies-migrations-at-deploy.md).
+#
+#   1. Railway builds the api and price-sync images from this commit on its own, and their
+#      pre-deploy step applies pending migrations before traffic switches. Nothing here drives it.
+#   2. `tag` puts v<major>.<minor>.<build> on the merge commit. It is minted whether or not the
+#      deploy succeeds; a failed deploy is fixed forward with the next release.
+#   3. `web` waits for the API's /health to report this commit, then builds the web app with the
+#      version and commit and deploys it to Cloudflare Pages. The web app never ships ahead of
+#      the API it calls.
+#
+# Railway's "Wait for CI" must stay off: it would hold the API deploy until this workflow
+# finished, while `web` waits for the API, and neither would move.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  API_HEALTH_URL: https://api.tirelessinvest.com/health
+  PAGES_PROJECT: tirelessinvest
+
+jobs:
+  tag:
+    name: Tag the version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # pushes the version tag
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history and tags, to compute the next version
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Compute the next version and push its tag
+        id: version
+        run: |
+          existing=$(git tag --list 'v*' --points-at "$GITHUB_SHA" |
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          if [ -n "$existing" ]; then
+            # A re-run on an already tagged commit reuses the tag instead of minting another.
+            tag="$existing"
+            echo "Commit already has ${tag}; reusing it."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            # No concurrency group here: GitHub cancels a queued run when a newer one queues,
+            # which would leave a merge untagged. If another run takes the number first, the
+            # push is refused; recompute from the refreshed tags and try again.
+            for attempt in 1 2 3 4 5; do
+              # The same computation the changelog check and the ship skill make.
+              tag="v$(node scripts/next-version.mjs)"
+              git tag -a "$tag" -m "Version ${tag#v}"
+              if git push origin "refs/tags/${tag}"; then
+                break
+              fi
+              git tag -d "$tag"
+              if [ "$attempt" = 5 ]; then
+                echo "::error::Could not push a version tag after 5 attempts."
+                exit 1
+              fi
+            done
+          fi
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "### Released \`${tag}\` from \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  web:
+    name: Deploy the web app after the API
+    needs: tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Restricted to main, so pull request and Dependabot workflows can't read its secret.
+    environment: production
+    # One web deploy at a time, in merge order. A queued run that a newer one replaces is
+    # cancelled, which is fine: the newer run deploys a newer web app.
+    concurrency:
+      group: release-web
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # history, to recognize a newer API commit that contains this one
+
+      - name: Wait for the API to run this commit or a later one
+        run: |
+          deadline=$(( $(date +%s) + 15 * 60 ))
+          while :; do
+            commit=$(curl -fsS --max-time 10 "$API_HEALTH_URL" | jq -r '.commit // empty' || true)
+            if [ "$commit" = "$GITHUB_SHA" ]; then
+              echo "The API is running ${GITHUB_SHA}."
+              break
+            fi
+            # A later merge may already be live; this commit is then part of what the API runs.
+            if [ -n "$commit" ] && git fetch -q origin main &&
+              git merge-base --is-ancestor "$GITHUB_SHA" "$commit" 2>/dev/null; then
+              echo "The API is running ${commit}, which includes ${GITHUB_SHA}."
+              break
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::After 15 minutes the API still reports '${commit:-nothing}', not ${GITHUB_SHA}. Check the api deploy in Railway; the web app was not deployed."
+              exit 1
+            fi
+            sleep 20
+          done
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - name: Build
+        working-directory: web
+        env:
+          # Public values: they end up in every visitor's browser (docs/INFRASTRUCTURE.md §5.2).
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_APP_VERSION: ${{ needs.tag.outputs.version }}
+          VITE_APP_COMMIT: ${{ github.sha }}
+        run: pnpm build
+
+      - name: Load the Cloudflare token
+        uses: 1password/load-secrets-action@v5
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CLOUDFLARE_API_TOKEN: op://TirelessInvest CI/Cloudflare Pages deploy/credential
+          CLOUDFLARE_ACCOUNT_ID: op://TirelessInvest CI/Cloudflare Pages deploy/account id
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          VERSION: ${{ needs.tag.outputs.version }}
+        run: >-
+          npx --yes wrangler@4 pages deploy web/dist
+          --project-name "$PAGES_PROJECT"
+          --branch main
+          --commit-hash "$GITHUB_SHA"
+          --commit-message "v$VERSION"

@@ -1,6 +1,6 @@
 """Scheduled job: refresh stored prices. Run with `python -m tirelessinvest.jobs.sync_prices`.
 
-Railway runs this on a cron schedule (see railway.sync.toml). It must exit when done.
+Railway runs this on a cron schedule (set on the price-sync service). It must exit when done.
 """
 
 from __future__ import annotations

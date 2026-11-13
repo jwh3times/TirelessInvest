@@ -19,8 +19,14 @@ BACKTEST = {
 }
 
 
-def test_health(client):
-    assert client.get("/health").json() == {"status": "ok"}
+def test_health_reports_the_running_commit(client, monkeypatch):
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "fab06b3e1f")
+    assert client.get("/health").json() == {"status": "ok", "commit": "fab06b3e1f"}
+
+
+def test_health_reports_no_commit_outside_railway(client, monkeypatch):
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    assert client.get("/health").json() == {"status": "ok", "commit": None}
 
 
 def test_requests_without_valid_token_are_rejected(client, db):
