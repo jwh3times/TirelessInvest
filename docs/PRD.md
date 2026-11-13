@@ -168,11 +168,12 @@ Seeded flags:
 
 **Outputs:**
 
-- A plain-language verdict, e.g. "$10,000 became $17,885 (+78.9%). That is 11.7% per year behind
-  simply holding SPY." Built: "ahead / behind" is decided by CAGR alone. **Decided** (Q1): it is
-  decided by the strategy's Sharpe ratio against SPY's over the same period, after costs, and
-  the sentence still reports the CAGR difference as context, e.g. "… 2.1% per year less than
-  SPY, with half the volatility: better risk-adjusted."
+- A plain-language verdict, e.g. "$10,000 became $17,885 (+78.9%). That is 2.1% per year less
+  than simply holding SPY, with 9.0% volatility against 18.0%: better risk-adjusted (Sharpe 0.91
+  against 0.65)." **Decided** (Q1) and built (#21): the API decides it by the strategy's Sharpe
+  ratio against SPY's over the same dates, after costs, and the sentence still reports the CAGR
+  difference and both volatilities as context. When a Sharpe ratio is undefined (no volatility),
+  it says no risk-adjusted comparison is possible.
 - **Decided** (Q6): every result states its data window, e.g. "Tested 2016 onward only: no long
   bear market in this period", until longer history is available.
 - **Decided** (Q7): with a holdout, the in-sample and held-out periods are reported separately.
