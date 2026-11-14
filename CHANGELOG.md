@@ -13,6 +13,27 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.4.0] - 2026-11-14
+
+### Added
+
+- Users can delete their own account from the new Account page, reached by clicking their email
+  address in the top bar. They confirm by typing that address. Deletion is immediate and
+  permanent: their backtests, permissions and flag overrides are removed, and they are signed
+  out. The admin's own account can't be deleted this way.
+- `DELETE /me` deletes the caller's account when the request carries their email address as
+  `confirm_email`. A missing or wrong confirmation is a 422, and the admin account is a 403.
+- The "Could not reach the API" screen has a Sign out button.
+
+### Changed
+
+- The API refuses a token whose user no longer exists with a 401, on every route, even before the
+  token expires.
+- Admin audit-log entries about a deleted user stay, with the user's id replaced by
+  "deleted user".
+- Admin changes to a user who no longer exists, removing a flag override included, return 404
+  instead of writing an audit entry.
+
 ## [0.3.1] - 2026-11-14
 
 ### Changed

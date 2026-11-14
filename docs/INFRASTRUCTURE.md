@@ -43,7 +43,8 @@ goes to production in a fixed order, migrations, then the API, then the web app 
 **Request flow:**
 
 1. The browser signs in with Supabase Auth and receives a JWT (a signed login token).
-2. Every API call sends that JWT. The API verifies it against Supabase's published signing keys.
+2. Every API call sends that JWT. The API verifies it against Supabase's published signing keys,
+   and checks that its user still exists (§7).
 3. The API checks permissions and feature flags in Postgres, then reads or writes data.
 4. The browser never queries the database directly.
 
