@@ -25,7 +25,7 @@ export function AccountPage() {
   }
 
   return (
-    <section className="card account">
+    <section className="card">
       <h2>Account</h2>
       <p>
         Signed in as <strong>{email}</strong>.

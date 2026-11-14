@@ -1,18 +1,27 @@
-"""The signed-in user's own account: deleting it."""
+"""The signed-in user's own account: who they are, and deleting it."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from ..access import flags_for, permissions_for
 from ..auth import CurrentUser, current_user
 from ..db import connection
+from .admin import forget_user_in_audit
 
 router = APIRouter(tags=["account"])
 
-# Stands in for a deleted user's id in the admin audit log, which keeps its entries but not
-# whose account they were about.
-DELETED_USER = "deleted user"
+
+@router.get("/me")
+def me(user: CurrentUser = Depends(current_user)) -> dict:
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "is_admin": user.is_admin,
+        "permissions": sorted(permissions_for(user)),
+        "flags": flags_for(user),
+    }
 
 
 class DeleteAccount(BaseModel):
@@ -41,24 +50,10 @@ def delete_my_account(body: DeleteAccount, user: CurrentUser = Depends(current_u
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN, "the admin account can't be deleted through the app"
             )
+        # lower() matches the web page's toLowerCase(), which enables the button.
         email = row["email"] or ""
-        if not email or body.confirm_email.strip().casefold() != email.casefold():
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                "the confirmation doesn't match your account's email address",
-            )
-        # Admin audit entries about the user stay, but no longer say whose account it was:
-        # permissions.set names the user as its target, flag.override.* in detail.user_id.
-        conn.execute(
-            "update public.admin_audit_log set target = %s where target = %s",
-            (DELETED_USER, str(user.id)),
-        )
-        conn.execute(
-            """
-            update public.admin_audit_log
-            set detail = jsonb_set(detail, '{user_id}', to_jsonb(%s::text))
-            where detail ->> 'user_id' = %s
-            """,
-            (DELETED_USER, str(user.id)),
-        )
+        if not email or body.confirm_email.strip().lower() != email.lower():
+            raise HTTPException(422, "the confirmation doesn't match your account's email address")
+        # Admin audit entries about the user stay, but no longer say whose account it was.
+        forget_user_in_audit(conn, user.id)
         conn.execute("delete from auth.users where id = %s", (user.id,))

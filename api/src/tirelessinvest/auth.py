@@ -1,4 +1,5 @@
-"""Verifies Supabase access tokens and exposes the current user to routes."""
+"""Verifies Supabase access tokens, checks their user still exists, and exposes the current user
+to routes."""
 
 from __future__ import annotations
 

@@ -529,3 +529,9 @@ def test_account_deletion_keeps_audit_entries_about_the_user_without_their_ident
         assert kept["action"] == entry["action"]
         assert "deleted user" in (kept["target"], kept["detail"].get("user_id"))
     assert entries_about(bystander_id) == about_bystander
+
+    # An admin acting on the deleted user afterwards (a stale dashboard) finds no user, and
+    # writes no new entry naming them.
+    r = client.delete(f"/admin/flags/live_trading/overrides/{user_id}", headers=auth(admin))
+    assert r.status_code == 404
+    assert entries_about(user_id) == []
