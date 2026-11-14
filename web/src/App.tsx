@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { useAuth } from "./lib/auth";
+import { AccountPage } from "./pages/AccountPage";
 import { AdminPage } from "./pages/AdminPage";
 import { BacktestPage } from "./pages/BacktestPage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -23,6 +24,7 @@ export function App() {
         <Route index element={<LabPage />} />
         <Route path="backtests" element={<HistoryPage />} />
         <Route path="backtests/:id" element={<BacktestPage />} />
+        <Route path="account" element={<AccountPage />} />
         <Route
           path="admin"
           element={me?.is_admin ? <AdminPage /> : <Navigate to="/" replace />}

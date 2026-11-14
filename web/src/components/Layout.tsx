@@ -18,7 +18,9 @@ export function Layout() {
           {me?.is_admin && <NavLink to="/admin">Admin</NavLink>}
         </nav>
         <div className="topbar-user">
-          <span className="muted">{me?.email}</span>
+          <NavLink to="/account" className="muted" title="Your account">
+            {me?.email}
+          </NavLink>
           <button className="ghost" onClick={() => supabase.auth.signOut()}>
             Sign out
           </button>

@@ -215,7 +215,7 @@ Defined in `supabase/migrations/20261110000000_init.sql`.
 | `user_permissions` | Who holds which permission | Filled by a trigger on new `auth.users` rows |
 | `feature_flags` | Global flag values | Seeded: `strategy.mean_reversion`, `live_trading` |
 | `feature_flag_overrides` | Per-user flag values | Override wins over the global value |
-| `admin_audit_log` | Admin actions | Actor, action, target, details (JSON) |
+| `admin_audit_log` | Admin actions | Actor, action, target, details (JSON). Deleting an account replaces that user's id with `deleted user` |
 | `symbols` | Tracked tickers | `history_from` prevents repeated backfills |
 | `prices_daily` | Adjusted daily bars | Primary key (symbol, date); about 2,500 rows per symbol for 10 years |
 | `backtests` | Saved runs | Request, summary and full report as JSON. Reports of a few hundred KB are fine at this scale. |
@@ -232,12 +232,13 @@ migration that rewrites rows must leave them readable by the previous release
 
 | Concern | Control |
 |---|---|
-| Who is calling | Every API route except `/health` needs a valid Supabase JWT: signature, `exp`, `aud=authenticated`, and `iss` checked. |
+| Who is calling | Every API route except `/health` needs a valid Supabase JWT: signature, `exp`, `aud=authenticated`, and `iss` checked, and its user must still exist in `auth.users`, so a deleted user's unexpired token gets 401. |
 | Admin rights | `app_metadata.role` only, which needs the service role to change. A test proves `user_metadata` can't grant admin. |
 | Becoming admin | No API or UI path. Run `python -m tirelessinvest.cli make-admin <email>` with production `DATABASE_URL`; it refuses if an admin exists. The user then signs out and back in to refresh their token. |
 | Permissions and flags | Checked on the server for each request. UI hiding is cosmetic. |
 | Direct database access from browsers | Blocked by RLS with no policies plus revoked grants (tested). |
 | Other users' data | Other users' backtests return 404. |
+| Deleting an account | `DELETE /me` deletes only the caller, after the email they typed matches the one in `auth.users`. It refuses the admin, read from the database rather than the token. One transaction anonymises the user's admin audit entries and deletes the `auth.users` row, which cascades to their backtests, permissions, flag overrides and Supabase sessions. |
 | Secrets | Railway variables (Alpaca keys, DB URL). The owner keeps the production values in a password manager, never in `.env` files. Nothing secret in the repo or the web bundle. The database credential stays in Railway: migrations run there, not in CI ([ADR 0001](adr/0001-railway-applies-migrations-at-deploy.md)). The release workflow's Cloudflare token comes from 1Password, through a secret only the `main`-only `production` environment can read (§5.3). |
 | Release tags | A tag ruleset on `v*` blocks updating or deleting a version tag once the release workflow has pushed it. |
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |

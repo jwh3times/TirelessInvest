@@ -50,6 +50,10 @@ with simply buying and holding an index fund under the same costs.
   deliberately labelled *survivorship-biased* list of today's mega caps.
 - **Accounts and roles:** Supabase Auth. One admin, set from the command line. Users get
   default permissions on sign-up.
+- **Account deletion:** users delete their own account from the Account page by typing their
+  email address. It is immediate and permanent: their backtests, permissions and flag overrides
+  go with it, and admin audit entries about them stay with their identity replaced by "deleted
+  user". The admin's own account can't be deleted this way.
 - **Admin dashboard:** per-user permissions, feature flags (global switch plus per-user
   overrides), and an audit log of every admin change.
 

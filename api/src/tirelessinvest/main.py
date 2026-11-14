@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import close_pool
-from .routes import admin, backtests, catalog
+from .routes import account, admin, backtests, catalog
 
 
 def running_commit() -> str | None:
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "commit": running_commit()}
 
     app.include_router(catalog.router)
+    app.include_router(account.router)
     app.include_router(backtests.router)
     app.include_router(admin.router)
     return app
