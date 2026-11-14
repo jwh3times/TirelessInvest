@@ -35,6 +35,22 @@ class BacktestError(ValueError):
     """A request that is well-formed but cannot be run (e.g. missing data)."""
 
 
+def shift_years(d: date, years: int) -> date:
+    """The same calendar day `years` later (earlier when negative); 29 February becomes the 28th."""
+    try:
+        return d.replace(year=d.year + years)
+    except ValueError:
+        return d.replace(year=d.year + years, day=28)
+
+
+def leaves_a_year_in_sample(first: date, holdout_start: date) -> bool:
+    return holdout_start >= shift_years(first, 1)
+
+
+def _too_short_in_sample(holdout_years: int, detail: str) -> str:
+    return f"a {holdout_years}-year holdout needs at least one year in-sample: {detail}"
+
+
 class UniverseSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -92,6 +108,12 @@ class BacktestRequest(BaseModel):
         0.005, ge=0, le=0.2, description="Skip trades smaller than this fraction of equity."
     )
     benchmark: str = "SPY"
+    holdout_years: int | None = Field(
+        None,
+        ge=1,
+        le=MAX_YEARS,
+        description="Report the last N years separately from the rest, as a holdout.",
+    )
 
     @model_validator(mode="after")
     def _dates(self) -> BacktestRequest:
@@ -108,7 +130,21 @@ class BacktestRequest(BaseModel):
         legacy = self.legacy_risk_level
         if legacy is not None and self.risk != LEGACY_RISK_PRESETS[legacy][1]:
             raise ValueError("legacy_risk_level needs the explicit risk settings it stands for")
+        if self.holdout_years is not None and not leaves_a_year_in_sample(
+            self.start_date, self.holdout_start()
+        ):
+            start_by = shift_years(self.holdout_start(), -1)
+            raise ValueError(
+                _too_short_in_sample(
+                    self.holdout_years, f"start by {start_by}, or hold out fewer years"
+                )
+            )
         return self
+
+    def holdout_start(self) -> date:
+        """The first day of the holdout: the end date less `holdout_years`."""
+        assert self.holdout_years is not None
+        return shift_years(self.end_date, -self.holdout_years)
 
     def risk_settings(self) -> RiskSettings:
         return self.risk if self.risk is not None else RISK_PRESETS[self.risk_level][1]
@@ -169,6 +205,8 @@ def run_backtest(req: BacktestRequest, store: PriceStore) -> dict[str, Any]:
         )
     except ValueError as exc:
         raise BacktestError(str(exc)) from exc
+    if req.holdout_years is not None:
+        _check_holdout_has_data(req, result.equity.index)
 
     return _report(req, rebalance, risk, result, bench, bars, warnings)
 
@@ -217,6 +255,57 @@ def data_window(first: date, last: date) -> dict[str, Any]:
     return {"first_date": first.isoformat(), "last_date": last.isoformat(), "notice": notice}
 
 
+def _check_holdout_has_data(req: BacktestRequest, dates: pd.DatetimeIndex) -> None:
+    """The request's dates leave a year in-sample, but its price data may begin later."""
+    first, boundary = dates[0].date(), req.holdout_start()
+    assert req.holdout_years is not None
+    if not leaves_a_year_in_sample(first, boundary):
+        raise BacktestError(
+            _too_short_in_sample(
+                req.holdout_years,
+                f"price data begins on {first.isoformat()}, so hold out fewer years, or end later",
+            )
+        )
+    if dates[-1].date() < boundary:
+        raise BacktestError(f"no price data in the holdout, from {boundary.isoformat()}")
+
+
+def _holdout_sections(
+    req: BacktestRequest, equity: pd.Series, bench_equity: pd.Series
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """The in-sample and holdout sections of one continuous run, or None without a holdout.
+
+    The holdout is measured from the portfolio's value at the last in-sample close: where the
+    run had got to, not a fresh start.
+    """
+    if req.holdout_years is None:
+        return None, None
+    in_holdout = equity.index >= pd.Timestamp(req.holdout_start())
+    in_sample_dates, holdout_dates = equity.index[~in_holdout], equity.index[in_holdout]
+    measured_from_last_close = in_sample_dates[-1:].append(holdout_dates)
+    return (
+        _holdout_section(equity, bench_equity, in_sample_dates, in_sample_dates),
+        _holdout_section(equity, bench_equity, holdout_dates, measured_from_last_close),
+    )
+
+
+def _holdout_section(
+    equity: pd.Series,
+    bench_equity: pd.Series,
+    dates: pd.DatetimeIndex,
+    return_dates: pd.DatetimeIndex,
+) -> dict[str, Any]:
+    """A section labelled by `dates`, with its metrics measured over `return_dates`."""
+    strategy, bench = equity.loc[return_dates], bench_equity.reindex(return_dates)
+    return {
+        "first_date": dates[0].date().isoformat(),
+        "last_date": dates[-1].date().isoformat(),
+        "summary": performance(strategy, benchmark=bench),
+        "benchmark": {"summary": performance(bench)},
+        "verdict": risk_adjusted_verdict(strategy, bench),
+    }
+
+
 def _round(values: pd.Series, digits: int) -> list[float | None]:
     return [None if pd.isna(v) else round(float(v), digits) for v in values]
 
@@ -253,6 +342,7 @@ def _report(
         for s, q in sorted(result.final_shares.items())
     ]
     trades = result.trades[-MAX_STORED_TRADES:]
+    in_sample, holdout = _holdout_sections(req, equity, bench_equity)
 
     return {
         "config": {
@@ -268,6 +358,8 @@ def _report(
         },
         "verdict": risk_adjusted_verdict(equity, bench_equity),
         "data_window": data_window(equity.index[0].date(), equity.index[-1].date()),
+        "in_sample": in_sample,
+        "holdout": holdout,
         "series": {
             "dates": [d.date().isoformat() for d in equity.index],
             "equity": _round(equity, 2),

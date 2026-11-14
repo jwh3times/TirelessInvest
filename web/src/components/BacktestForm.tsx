@@ -53,6 +53,7 @@ export function BacktestForm({ catalog, canUseCustomUniverse, busy, onSubmit }: 
   const [feeBps, setFeeBps] = useState(String(catalog.default_costs.fee_bps));
   const [slipBps, setSlipBps] = useState(String(catalog.default_costs.slippage_bps));
   const [benchmark, setBenchmark] = useState("SPY");
+  const [holdoutYears, setHoldoutYears] = useState("");
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -98,6 +99,7 @@ export function BacktestForm({ catalog, canUseCustomUniverse, busy, onSubmit }: 
         risk_level: riskLevel,
         costs: { fee_bps: Number(feeBps), slippage_bps: Number(slipBps) },
         benchmark: benchmark.trim().toUpperCase() || "SPY",
+        holdout_years: holdoutYears.trim() ? Number(holdoutYears) : null,
       });
     } catch (err) {
       setFormError((err as Error).message);
@@ -231,6 +233,22 @@ export function BacktestForm({ catalog, canUseCustomUniverse, busy, onSubmit }: 
             Since 2016
           </button>
         </div>
+        <label>
+          Hold out the last … years (optional)
+          <input
+            type="number"
+            min={1}
+            step={1}
+            placeholder="none"
+            value={holdoutYears}
+            onChange={(e) => setHoldoutYears(e.target.value)}
+          />
+          <span className="hint">
+            Reports those years separately from the rest, to check the strategy on a period it
+            wasn't tuned on. The simulation itself runs straight through. Leave at least a year
+            before them.
+          </span>
+        </label>
         <label>
           Simulated deposit (USD)
           <input
