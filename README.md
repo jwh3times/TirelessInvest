@@ -48,8 +48,9 @@ with simply buying and holding an index fund under the same costs.
   reproduces its result, and show as "old 1–5 scale".
 - **Universes:** S&P 500 ETF; large/mid/small-cap ETFs; multi-asset; sectors; and a
   deliberately labelled *survivorship-biased* list of today's mega caps.
-- **Accounts and roles:** Supabase Auth. One admin, set from the command line. Users get
-  default permissions on sign-up.
+- **Accounts and roles:** Supabase Auth, invite-only. The owner invites people from Supabase,
+  and each sets a password on first arrival. One admin, set from the command line. New users
+  get the default permissions.
 - **Admin dashboard:** per-user permissions, feature flags (global switch plus per-user
   overrides), and an audit log of every admin change.
 
@@ -107,7 +108,12 @@ pnpm install
 pnpm dev                # http://localhost:5173
 ```
 
-Make yourself admin (sign up in the app first):
+Sign-up is off locally, as in production. Create your account by inviting yourself: in Studio
+(http://127.0.0.1:54323), **Authentication → Users → Add user → Send invitation**. The email
+lands in the local inbox at http://127.0.0.1:54324; follow its link, and the app asks you to set
+a password.
+
+Make yourself admin (after accepting your invitation):
 
 ```bash
 cd api && uv run python -m tirelessinvest.cli make-admin you@example.com
@@ -153,7 +159,10 @@ listed in [AGENTS.md](AGENTS.md).
    once anything needs to run unattended.
 6. Under **Authentication → SMTP Settings**, configure your own email provider. Supabase's
    built-in email only delivers to members of your Supabase organization, so without this
-   nobody else can confirm a sign-up.
+   invitations reach nobody else.
+7. Under **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**.
+   Invite people from **Authentication → Users → Add user → Send invitation**. The invitation
+   links to the Site URL, where the app asks them to set a password.
 
 Full step-by-step setup, DNS and operations details are in
 [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md#10-setup-runbook-first-deployment).

@@ -1,4 +1,4 @@
-import type { Session } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "./api";
@@ -52,3 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export const useAuth = () => useContext(AuthContext);
+
+// The user_metadata key the set-password step writes along with the password.
+export const PASSWORD_SET_FLAG = "password_set";
+
+// An invited user arrives from the invitation link signed in but with no password. Supabase
+// doesn't say whether a user has a password, and supabase-js clears the link's `type=invite`
+// from the URL as it reads it, so the lasting signal is `invited_at` without the flag. It gates
+// only the user's own screen, never a permission, so a user editing their metadata gains nothing.
+export function needsPassword(user: User): boolean {
+  return !!user.invited_at && user.user_metadata?.[PASSWORD_SET_FLAG] !== true;
+}

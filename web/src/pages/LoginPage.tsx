@@ -1,25 +1,20 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabase";
 
+// Sign-in only: accounts come from the owner's Supabase invitations (PRD A8).
 export function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
-    setMessage(null);
-    const { data, error } =
-      mode === "signin"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+    setError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) setMessage({ kind: "error", text: error.message });
-    else if (mode === "signup" && !data.session)
-      setMessage({ kind: "info", text: "Check your email to confirm your account." });
+    if (error) setError(error.message);
   }
 
   return (
@@ -43,24 +38,17 @@ export function LoginPage() {
           Password
           <input
             type="password"
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            autoComplete="current-password"
             required
-            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-        {message && <p className={message.kind}>{message.text}</p>}
+        {error && <p className="error">{error}</p>}
         <button type="submit" disabled={busy}>
-          {mode === "signin" ? "Sign in" : "Create account"}
+          Sign in
         </button>
-        <button
-          type="button"
-          className="link"
-          onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-        >
-          {mode === "signin" ? "New here? Create an account" : "Have an account? Sign in"}
-        </button>
+        <p className="muted">TirelessInvest is invite-only for now.</p>
       </form>
     </div>
   );
