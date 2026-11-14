@@ -13,6 +13,31 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.3.0] - 2026-11-13
+
+### Added
+
+- Backtests saved on the earlier five-level dial say so: history and the results page show their
+  risk level as "old 1–5 scale". The history list has a Risk column, and each item in
+  `GET /backtests` carries `risk_level` and `legacy_risk_level`.
+
+### Changed
+
+- The risk dial has ten levels instead of five, with the same mechanics in finer steps: a cap on
+  any one symbol from 20% to 100%, a volatility target from 4% to 28% a year (none at level 10),
+  and a cash floor of 10% at level 1 and 5% at level 2. The default is level 5, Moderate (40% per
+  symbol, a 12% volatility target), where it was level 5, Unconstrained. A request's `risk_level`
+  now names a level on the new dial, so an API caller sending 1–5 gets a different preset than
+  before, and one sending no level runs Moderate. Explicit `risk` settings still override the
+  level.
+- The backtest form's dial shows each level's label and mechanics, and says plainly that a risk
+  level is not a loss limit.
+- Backtests saved before this release keep their results. A one-time database migration rewrites
+  each saved request that relied on its 1–5 level to that old preset's explicit settings plus a
+  `legacy_risk_level` marker, so re-running it reproduces the original result; requests that
+  already had explicit settings are untouched. The API accepts the marker only with the exact
+  old-preset settings it stands for.
+
 ## [0.2.1] - 2026-11-13
 
 ### Changed
