@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { needsPassword, useAuth } from "./lib/auth";
+import { supabase } from "./lib/supabase";
+import { AccountPage } from "./pages/AccountPage";
 import { AdminPage } from "./pages/AdminPage";
 import { BacktestPage } from "./pages/BacktestPage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -17,6 +19,10 @@ export function App() {
     return (
       <div className="center">
         <p className="error">Could not reach the API: {meError.message}</p>
+        {/* A session can outlive its account (deleted on another device); let it go. */}
+        <button className="ghost" onClick={() => supabase.auth.signOut({ scope: "local" })}>
+          Sign out
+        </button>
       </div>
     );
   return (
@@ -25,6 +31,7 @@ export function App() {
         <Route index element={<LabPage />} />
         <Route path="backtests" element={<HistoryPage />} />
         <Route path="backtests/:id" element={<BacktestPage />} />
+        <Route path="account" element={<AccountPage />} />
         <Route
           path="admin"
           element={me?.is_admin ? <AdminPage /> : <Navigate to="/" replace />}

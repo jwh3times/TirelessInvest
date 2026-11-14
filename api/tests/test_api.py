@@ -423,3 +423,118 @@ def test_catalog_serves_the_ten_level_dial(client, db):
         "vol_lookback_days": 63,
         "cash_buffer": 0.0,
     }
+
+
+# --- account deletion -------------------------------------------------------------------
+
+
+def _owned_rows(db, user_id: str) -> dict[str, int]:
+    """What a user leaves in the database. Deletion must leave none of it."""
+    return {
+        table: db.execute(
+            f"select count(*) from public.{table} where user_id = %s", (user_id,)
+        ).fetchone()[0]
+        for table in ("backtests", "user_permissions", "feature_flag_overrides")
+    }
+
+
+def test_user_deletes_their_own_account_and_everything_they_own(client, db):
+    user_id, user = make_user(db)
+    _, admin = make_user(db, admin=True)
+    email = client.get("/me", headers=auth(user)).json()["email"]
+    run = client.post("/backtests", json={**BACKTEST, "name": "mine"}, headers=auth(user))
+    assert run.status_code == 201, run.text
+    client.put(
+        f"/admin/flags/strategy.mean_reversion/overrides/{user_id}",
+        headers=auth(admin),
+        json={"enabled": True},
+    )
+    assert all(_owned_rows(db, user_id).values())
+
+    # The typed confirmation is compared without regard to case or surrounding spaces.
+    r = client.request(
+        "DELETE", "/me", headers=auth(user), json={"confirm_email": f"  {email.upper()} "}
+    )
+    assert r.status_code == 204, r.text
+
+    assert _owned_rows(db, user_id) == {
+        "backtests": 0,
+        "user_permissions": 0,
+        "feature_flag_overrides": 0,
+    }
+    listed = client.get("/admin/users", headers=auth(admin)).json()
+    assert user_id not in {u["id"] for u in listed}
+    # The old token is still unexpired, but it no longer names a user.
+    assert client.get("/me", headers=auth(user)).status_code == 401
+    assert client.get("/backtests", headers=auth(user)).status_code == 401
+
+
+def test_account_deletion_needs_the_users_own_email_typed_as_confirmation(client, db):
+    user_id, user = make_user(db)
+    _, other = make_user(db)
+    other_email = client.get("/me", headers=auth(other)).json()["email"]
+    before = _owned_rows(db, user_id)
+
+    for body in ({"confirm_email": other_email}, {"confirm_email": ""}, {}, None):
+        r = client.request("DELETE", "/me", headers=auth(user), json=body)
+        assert r.status_code == 422, (body, r.text)
+
+    assert client.get("/me", headers=auth(user)).status_code == 200
+    assert _owned_rows(db, user_id) == before
+
+
+def test_the_admin_account_cannot_be_deleted_through_the_app(client, db):
+    admin_id, _ = make_user(db, admin=True)
+    email = db.execute("select email from auth.users where id = %s", (admin_id,)).fetchone()[0]
+    # A token minted before the role was granted still carries no role; the check reads the
+    # database, so it holds either way.
+    stale = token_for(admin_id, email, app_metadata={})
+
+    r = client.request("DELETE", "/me", headers=auth(stale), json={"confirm_email": email})
+    assert r.status_code == 403
+    assert "admin" in r.json()["detail"]
+    assert client.get("/me", headers=auth(stale)).status_code == 200
+
+
+def test_account_deletion_keeps_audit_entries_about_the_user_without_their_identity(client, db):
+    user_id, user = make_user(db)
+    bystander_id, _ = make_user(db)
+    _, admin = make_user(db, admin=True)
+    email = client.get("/me", headers=auth(user)).json()["email"]
+    for who in (user_id, bystander_id):
+        client.put(
+            f"/admin/users/{who}/permissions",
+            headers=auth(admin),
+            json={"permissions": ["backtest:run"]},
+        )
+        client.put(
+            f"/admin/flags/live_trading/overrides/{who}",
+            headers=auth(admin),
+            json={"enabled": False},
+        )
+
+    def entries_about(who: str) -> list[dict]:
+        log = client.get("/admin/audit", params={"limit": 500}, headers=auth(admin)).json()
+        return [a for a in log if who in (a["target"], a["detail"].get("user_id"))]
+
+    about_user = entries_about(user_id)
+    assert {a["action"] for a in about_user} == {"permissions.set", "flag.override.set"}
+    about_bystander = entries_about(bystander_id)
+
+    r = client.request("DELETE", "/me", headers=auth(user), json={"confirm_email": email})
+    assert r.status_code == 204, r.text
+
+    assert entries_about(user_id) == []
+    log = client.get("/admin/audit", params={"limit": 500}, headers=auth(admin)).json()
+    by_id = {a["id"]: a for a in log}
+    for entry in about_user:
+        kept = by_id[entry["id"]]
+        assert kept["action"] == entry["action"]
+        assert "deleted user" in (kept["target"], kept["detail"].get("user_id"))
+    assert entries_about(bystander_id) == about_bystander
+
+    # An admin acting on the deleted user afterwards (a stale dashboard) finds no user, and
+    # writes no new entry naming them.
+    r = client.delete(f"/admin/flags/live_trading/overrides/{user_id}", headers=auth(admin))
+    assert r.status_code == 404
+    assert entries_about(user_id) == []

@@ -1,4 +1,5 @@
-"""Verifies Supabase access tokens and exposes the current user to routes."""
+"""Verifies Supabase access tokens, checks their user still exists, and exposes the current user
+to routes."""
 
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import get_settings
+from .db import connection
 
 log = logging.getLogger(__name__)
 
@@ -76,11 +78,17 @@ def current_user(
     except jwt.PyJWTError as exc:
         log.info("rejected token: %s", exc)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid or expired token") from exc
+    user_id = UUID(claims["sub"])
+    # A token outlives its user: after an account is deleted, its access token stays valid
+    # until it expires. Only a user who still exists is authenticated.
+    with connection() as conn:
+        if conn.execute("select 1 from auth.users where id = %s", (user_id,)).fetchone() is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "unknown user")
     # Role comes from app_metadata, which only the service role can write.
     # Never read roles from user_metadata: users can edit that themselves.
     app_metadata = claims.get("app_metadata") or {}
     return CurrentUser(
-        id=UUID(claims["sub"]),
+        id=user_id,
         email=claims.get("email"),
         is_admin=app_metadata.get("role") == "admin",
     )

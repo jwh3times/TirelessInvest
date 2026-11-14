@@ -29,6 +29,39 @@ def _audit(conn, actor: CurrentUser, action: str, target: str, detail: dict) -> 
     )
 
 
+# Stands in for a deleted user's id in the audit log, which keeps its entries but not whose
+# account they were about.
+DELETED_USER = "deleted user"
+
+
+def forget_user_in_audit(conn, user_id: UUID) -> None:
+    """Replaces a user's id in the audit entries that name them. Every _audit call that names a
+    user does it in one of these two places: as the target (permissions.set) or as
+    detail.user_id (flag.override.*); a new kind of entry must use one of them too."""
+    conn.execute(
+        "update public.admin_audit_log set target = %s where target = %s",
+        (DELETED_USER, str(user_id)),
+    )
+    conn.execute(
+        """
+        update public.admin_audit_log
+        set detail = jsonb_set(detail, '{user_id}', to_jsonb(%s::text))
+        where detail ->> 'user_id' = %s
+        """,
+        (DELETED_USER, str(user_id)),
+    )
+
+
+def _require_user(conn, user_id: UUID) -> None:
+    """404 unless the user exists. The share lock waits out an account deletion in progress, so
+    an entry can't be written about a user whose entries are being anonymised."""
+    if (
+        conn.execute("select 1 from auth.users where id = %s for share", (user_id,)).fetchone()
+        is None
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found")
+
+
 # --- users & permissions ---------------------------------------------------------------
 
 
@@ -71,8 +104,7 @@ def set_permissions(
 ) -> dict:
     wanted = sorted(set(body.permissions))
     with connection() as conn:
-        if conn.execute("select 1 from auth.users where id = %s", (user_id,)).fetchone() is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found")
+        _require_user(conn, user_id)
         known = {r["key"] for r in conn.execute("select key from public.permissions")}
         unknown = set(wanted) - known
         if unknown:
@@ -185,8 +217,7 @@ def set_override(
             is None
         ):
             raise HTTPException(status.HTTP_404_NOT_FOUND, "flag not found")
-        if conn.execute("select 1 from auth.users where id = %s", (user_id,)).fetchone() is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "user not found")
+        _require_user(conn, user_id)
         conn.execute(
             """
             insert into public.feature_flag_overrides (flag_key, user_id, enabled)
@@ -209,6 +240,7 @@ def set_override(
 @router.delete("/flags/{key}/overrides/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_override(key: str, user_id: UUID, admin: CurrentUser = Depends(require_admin)) -> None:
     with connection() as conn:
+        _require_user(conn, user_id)
         conn.execute(
             "delete from public.feature_flag_overrides where flag_key = %s and user_id = %s",
             (key, user_id),

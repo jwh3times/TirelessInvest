@@ -130,6 +130,7 @@ button {
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.ghost { background: transparent; color: var(--text-secondary); border-color: var(--border); }
+button.danger { background: var(--error); color: var(--surface); align-self: flex-start; }
 button.link { background: none; border: none; color: var(--accent); padding: 0; font-weight: 500; }
 button.small, .small button { padding: 4px 8px; font-size: 0.82rem; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }

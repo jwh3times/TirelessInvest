@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from ..access import flags_for, permissions_for
+from ..access import flags_for
 from ..auth import CurrentUser, current_user
 from ..engine.risk import RISK_PRESETS
 from ..engine.simulator import Costs
@@ -10,17 +10,6 @@ from ..engine.strategies import STRATEGIES
 from ..engine.universes import UNIVERSES
 
 router = APIRouter(tags=["catalog"])
-
-
-@router.get("/me")
-def me(user: CurrentUser = Depends(current_user)) -> dict:
-    return {
-        "id": str(user.id),
-        "email": user.email,
-        "is_admin": user.is_admin,
-        "permissions": sorted(permissions_for(user)),
-        "flags": flags_for(user),
-    }
 
 
 @router.get("/catalog")
