@@ -233,6 +233,7 @@ migration that rewrites rows must leave them readable by the previous release
 | Concern | Control |
 |---|---|
 | Who is calling | Every API route except `/health` needs a valid Supabase JWT: signature, `exp`, `aud=authenticated`, and `iss` checked. |
+| Getting an account | Invitation only: sign-up is off in Supabase (§10 step 2.5; `[auth] enable_signup = false` locally), and the owner invites each person. The app's set-password screen for invitees keys on `invited_at` and a `password_set` flag in `user_metadata`; it gates only that screen, never a permission. |
 | Admin rights | `app_metadata.role` only, which needs the service role to change. A test proves `user_metadata` can't grant admin. |
 | Becoming admin | No API or UI path. Run `python -m tirelessinvest.cli make-admin <email>` with production `DATABASE_URL`; it refuses if an admin exists. The user then signs out and back in to refresh their token. |
 | Permissions and flags | Checked on the server for each request. UI hiding is cosmetic. |
