@@ -79,11 +79,20 @@ export interface Verdict {
   cagr_difference: number | null;
 }
 
+/** The period a backtest actually had price data for, which can start after the requested date. */
+export interface DataWindow {
+  first_date: string;
+  last_date: string;
+  /** Set when the period spans neither the 2000–02 nor the 2008–09 bear market. */
+  notice: string | null;
+}
+
 export interface Report {
   config: BacktestRequest & { rebalance: Rebalance; risk: RiskSettings; symbols: string[] };
   summary: Metrics;
   benchmark: { symbol: string; summary: Metrics };
   verdict: Verdict;
+  data_window: DataWindow;
   series: {
     dates: string[];
     equity: number[];

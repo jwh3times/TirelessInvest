@@ -1,5 +1,5 @@
 import { money, num, pct, riskAdjustedLabel, signedPct } from "../lib/format";
-import type { Report } from "../lib/types";
+import type { DataWindow, Report } from "../lib/types";
 import { DrawdownChart, EquityChart, MonthlyReturns } from "./Charts";
 
 function Tile({ label, value, compare, hint }: {
@@ -43,6 +43,17 @@ function VerdictSentence({ report }: { report: Report }) {
   );
 }
 
+/** The period tested, right under the verdict, so a result from a rising market can't pass as
+ * proven. The API words the notice, which names the dates itself; without one, this line states
+ * them. */
+function DataWindowLine({ dataWindow: w }: { dataWindow: DataWindow }) {
+  return w.notice ? (
+    <p className="data-window warning" role="note">{w.notice}</p>
+  ) : (
+    <p className="data-window small muted">Tested {w.first_date} to {w.last_date}.</p>
+  );
+}
+
 export function Results({ report }: { report: Report }) {
   const s = report.summary;
   const b = report.benchmark.summary;
@@ -61,6 +72,7 @@ export function Results({ report }: { report: Report }) {
         {money(s.start_value)} became <strong>{money(s.end_value)}</strong> ({signedPct(s.total_return)}).
         <VerdictSentence report={report} />
       </p>
+      <DataWindowLine dataWindow={report.data_window} />
 
       <div className="tiles">
         <Tile label="Annual return (CAGR)" value={pct(s.cagr)} compare={`${bench}: ${pct(b.cagr)}`} />

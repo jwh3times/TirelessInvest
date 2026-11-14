@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import date
 from functools import lru_cache
 from uuid import UUID
 
@@ -12,7 +13,7 @@ from ..access import flags_for, permissions_for, require_permission
 from ..auth import CurrentUser, current_user
 from ..config import get_settings
 from ..db import connection
-from ..engine.backtest import BacktestError, BacktestRequest, run_backtest
+from ..engine.backtest import BacktestError, BacktestRequest, data_window, run_backtest
 from ..engine.data import PriceStore, SyntheticPriceStore
 from ..engine.metrics import verdict_from_summaries
 from ..engine.strategies import STRATEGIES
@@ -137,12 +138,20 @@ def _list_item(row: dict) -> dict:
     return {**item, "id": str(row["id"]), "summary": summary, "verdict": verdict}
 
 
-def _with_verdict(report: dict) -> dict:
-    """Reports saved before the verdict existed get one derived from their stored summaries."""
-    if "verdict" in report:
-        return report
-    verdict = verdict_from_summaries(report["summary"], report["benchmark"]["summary"])
-    return {**report, "verdict": verdict}
+def _with_derived_fields(report: dict) -> dict:
+    """Reports saved before the verdict or the data window existed get them derived from what
+    they stored: the verdict from their summaries, the data window from their series' dates."""
+    report = dict(report)
+    if "verdict" not in report:
+        report["verdict"] = verdict_from_summaries(
+            report["summary"], report["benchmark"]["summary"]
+        )
+    if "data_window" not in report:
+        dates = report["series"]["dates"]
+        report["data_window"] = data_window(
+            date.fromisoformat(dates[0]), date.fromisoformat(dates[-1])
+        )
+    return report
 
 
 def _owned(conn, backtest_id: UUID, user: CurrentUser) -> dict:
@@ -162,7 +171,7 @@ def get_backtest(backtest_id: UUID, user: CurrentUser = Depends(current_user)) -
         "name": row["name"],
         "created_at": row["created_at"],
         "duration_ms": row["duration_ms"],
-        "report": _with_verdict(row["report"]),
+        "report": _with_derived_fields(row["report"]),
     }
 
 
