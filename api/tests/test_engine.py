@@ -202,6 +202,59 @@ def test_every_strategy_runs_end_to_end(key):
     assert report["benchmark"]["symbol"] == "SPY"
 
 
+NO_BEAR_MARKET = "this period has no long bear market"
+
+
+@pytest.mark.parametrize(
+    ("start", "end", "has_notice"),
+    [
+        (date(2016, 1, 4), date(2023, 12, 29), True),  # today's price history: no bear market
+        (date(2007, 10, 1), date(2009, 3, 31), False),  # spans 2007-10 to 2009-03 exactly
+        (date(2005, 1, 3), date(2012, 12, 31), False),
+        (date(1999, 6, 1), date(2003, 6, 30), False),  # spans 2000-03 to 2002-10
+        (date(2008, 1, 2), date(2015, 12, 31), True),  # starts after that bear market began
+        (date(2000, 3, 1), date(2009, 2, 27), False),  # one whole, the other cut short
+        (date(2000, 6, 1), date(2009, 2, 27), True),  # neither whole
+    ],
+)
+def test_report_states_its_data_window_and_flags_one_with_no_long_bear_market(
+    start, end, has_notice
+):
+    req = BacktestRequest(
+        strategy="fixed_weights",
+        universe={"symbols": ["SPY"]},
+        start_date=start,
+        end_date=end,
+    )
+    window = run_backtest(req, SyntheticPriceStore())["data_window"]
+    assert window["first_date"] == start.isoformat()
+    assert window["last_date"] == end.isoformat()
+    if has_notice:
+        assert window["notice"] == (
+            f"Tested only from {start.isoformat()} to {end.isoformat()}: {NO_BEAR_MARKET}."
+        )
+    else:
+        assert window["notice"] is None
+
+
+def test_data_window_is_the_period_with_data_not_the_period_requested():
+    class LateHistoryStore:
+        """Prices that begin on 2016-01-04, like today's real history."""
+
+        def load(self, symbols, start, end):
+            return synthetic_bars(symbols, max(start, date(2016, 1, 4)), end)
+
+    req = BacktestRequest(
+        strategy="fixed_weights",
+        universe={"symbols": ["SPY"]},
+        start_date=date(2006, 1, 2),
+        end_date=date(2020, 12, 31),
+    )
+    window = run_backtest(req, LateHistoryStore())["data_window"]
+    assert window["first_date"] == "2016-01-04"
+    assert window["notice"] is not None
+
+
 def test_missing_data_is_a_clear_error():
     class EmptyStore:
         def load(self, symbols, start, end):

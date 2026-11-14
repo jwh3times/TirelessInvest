@@ -23,6 +23,13 @@ MAX_SYMBOLS = 50
 MAX_YEARS = 30
 MAX_STORED_TRADES = 1000
 
+# The two long bear markets the history gate (PRD P11) asks a strategy to be tested through,
+# the PRD's 2000–02 and 2008–09, to the month from peak to trough.
+LONG_BEAR_MARKETS = (
+    (pd.Period("2000-03", freq="M"), pd.Period("2002-10", freq="M")),
+    (pd.Period("2007-10", freq="M"), pd.Period("2009-03", freq="M")),
+)
+
 
 class BacktestError(ValueError):
     """A request that is well-formed but cannot be run (e.g. missing data)."""
@@ -193,6 +200,23 @@ def _data_warnings(req: BacktestRequest, bars: Bars, symbols: list[str], warmup:
     return warnings
 
 
+def data_window(first: date, last: date) -> dict[str, Any]:
+    """The period a backtest had data for, with a notice when it spans neither long bear market.
+
+    It depends on the dates alone, so the notice goes away by itself once longer price history
+    lets a backtest reach back through one of them.
+    """
+    start, end = pd.Period(first, freq="M"), pd.Period(last, freq="M")
+    spans_a_bear_market = any(start <= peak and trough <= end for peak, trough in LONG_BEAR_MARKETS)
+    notice = (
+        None
+        if spans_a_bear_market
+        else f"Tested only from {first.isoformat()} to {last.isoformat()}: "
+        "this period has no long bear market."
+    )
+    return {"first_date": first.isoformat(), "last_date": last.isoformat(), "notice": notice}
+
+
 def _round(values: pd.Series, digits: int) -> list[float | None]:
     return [None if pd.isna(v) else round(float(v), digits) for v in values]
 
@@ -243,6 +267,7 @@ def _report(
             "summary": performance(bench_equity),
         },
         "verdict": risk_adjusted_verdict(equity, bench_equity),
+        "data_window": data_window(equity.index[0].date(), equity.index[-1].date()),
         "series": {
             "dates": [d.date().isoformat() for d in equity.index],
             "equity": _round(equity, 2),

@@ -142,6 +142,35 @@ def test_backtest_saved_before_the_verdict_still_shows_one(client, db):
     assert listed[0]["verdict"] == report["verdict"]
 
 
+POST_2016_WINDOW = {
+    "first_date": "2019-01-01",
+    "last_date": "2023-12-29",
+    "notice": "Tested only from 2019-01-01 to 2023-12-29: this period has no long bear market.",
+}
+
+
+def test_backtest_over_a_post_2016_period_carries_the_data_window_notice(client, db):
+    _, token = make_user(db)
+    created = client.post("/backtests", json=BACKTEST, headers=auth(token))
+    assert created.status_code == 201, created.text
+    assert created.json()["report"]["data_window"] == POST_2016_WINDOW
+
+    saved = client.get(f"/backtests/{created.json()['id']}", headers=auth(token)).json()
+    assert saved["report"]["data_window"] == POST_2016_WINDOW
+
+
+def test_backtest_saved_before_the_data_window_still_shows_one(client, db):
+    _, token = make_user(db)
+    backtest_id = client.post("/backtests", json=BACKTEST, headers=auth(token)).json()["id"]
+    db.execute(
+        "update public.backtests set report = report - 'data_window' where id = %s",
+        (backtest_id,),
+    )
+
+    report = client.get(f"/backtests/{backtest_id}", headers=auth(token)).json()["report"]
+    assert report["data_window"] == POST_2016_WINDOW
+
+
 def test_invalid_backtest_is_422(client, db):
     _, token = make_user(db)
     bad = {**BACKTEST, "end_date": "2018-01-01"}
