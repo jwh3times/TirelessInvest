@@ -97,13 +97,22 @@ def db(database_url):
         yield conn
 
 
-def make_user(conn: psycopg.Connection, *, admin: bool = False) -> tuple[str, str]:
-    """Insert a user (firing the sign-up trigger) and return (user_id, bearer token)."""
+def make_user(
+    conn: psycopg.Connection, *, admin: bool = False, invited: bool = False
+) -> tuple[str, str]:
+    """Insert a user (firing the new-user trigger) and return (user_id, bearer token).
+
+    With invited, the row looks like one Supabase's invitation creates: invited_at set and no
+    password yet."""
     email = f"user-{uuid.uuid4().hex[:8]}@example.test"
     meta = '{"role": "admin"}' if admin else "{}"
     user_id = conn.execute(
-        "insert into auth.users (email, raw_app_meta_data) values (%s, %s::jsonb) returning id",
-        (email, meta),
+        """
+        insert into auth.users (email, raw_app_meta_data, invited_at, encrypted_password)
+        values (%s, %s::jsonb, case when %s then now() end, case when %s then '' end)
+        returning id
+        """,
+        (email, meta, invited, invited),
     ).fetchone()[0]
     return str(user_id), token_for(
         str(user_id), email, app_metadata={"role": "admin"} if admin else {}

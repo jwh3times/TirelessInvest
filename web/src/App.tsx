@@ -12,7 +12,7 @@ export function App() {
   const { session, loading, me, meError } = useAuth();
   if (loading) return <div className="center muted">Loading…</div>;
   if (!session) return <LoginPage />;
-  if (needsPassword(session.user)) return <SetPasswordPage email={session.user.email} />;
+  if (needsPassword(session.user)) return <SetPasswordPage />;
   if (meError)
     return (
       <div className="center">

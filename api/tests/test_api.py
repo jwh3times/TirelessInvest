@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-import uuid
 from datetime import date
 
 import pandas as pd
@@ -62,25 +61,11 @@ def test_user_metadata_cannot_grant_admin(client, db):
     assert client.get("/admin/users", headers=auth(sneaky)).status_code == 403
 
 
-def test_signup_grants_default_permissions(client, db):
-    _, token = make_user(db)
-    me = client.get("/me", headers=auth(token)).json()
-    assert me["permissions"] == ["backtest:run"]
-    assert me["flags"] == {"live_trading": False, "strategy.mean_reversion": False}
-
-
-def test_invited_user_receives_default_permissions(client, db):
-    """Sign-up is closed, so accounts come from Supabase invitations. An invited user is a new
-    auth.users row with invited_at set and no password yet, and must get the same defaults."""
-    email = f"invitee-{uuid.uuid4().hex[:8]}@example.test"
-    user_id = db.execute(
-        """
-        insert into auth.users (email, invited_at, encrypted_password)
-        values (%s, now(), '') returning id
-        """,
-        (email,),
-    ).fetchone()[0]
-    token = token_for(str(user_id), email, app_metadata={})
+@pytest.mark.parametrize("invited", [False, True], ids=["created", "invited"])
+def test_new_user_receives_default_permissions(client, db, invited):
+    """Sign-up is closed, so accounts come from Supabase invitations (or the dashboard). Either
+    way the user is a new auth.users row, and gets the defaults."""
+    _, token = make_user(db, invited=invited)
     me = client.get("/me", headers=auth(token)).json()
     assert me["permissions"] == ["backtest:run"]
     assert me["flags"] == {"live_trading": False, "strategy.mean_reversion": False}

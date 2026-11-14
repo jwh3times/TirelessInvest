@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { PASSWORD_SET_FLAG } from "../lib/auth";
+import { setPassword, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 
 // An invited person arrives signed in from the invitation link, with no password yet. They set
 // one here before using the app, so later sign-ins work.
-export function SetPasswordPage({ email }: { email: string | undefined }) {
-  const [password, setPassword] = useState("");
+export function SetPasswordPage() {
+  const { session } = useAuth();
+  const [password, setPasswordValue] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -18,13 +19,9 @@ export function SetPasswordPage({ email }: { email: string | undefined }) {
     }
     setBusy(true);
     setError(null);
-    // The flag rides on the same update, so the app stops asking once the password is saved.
-    const { error } = await supabase.auth.updateUser({
-      password,
-      data: { [PASSWORD_SET_FLAG]: true },
-    });
+    const message = await setPassword(password);
     setBusy(false);
-    if (error) setError(error.message);
+    setError(message);
   }
 
   return (
@@ -32,7 +29,8 @@ export function SetPasswordPage({ email }: { email: string | undefined }) {
       <form className="card login" onSubmit={submit}>
         <h1>Welcome to TirelessInvest</h1>
         <p className="muted">
-          Choose a password for {email ?? "your account"}. You'll use it to sign in from now on.
+          Choose a password for {session?.user.email ?? "your account"}. You'll use it to sign in
+          from now on.
         </p>
         <label>
           New password
@@ -42,7 +40,7 @@ export function SetPasswordPage({ email }: { email: string | undefined }) {
             required
             minLength={8}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => setPasswordValue(e.target.value)}
           />
         </label>
         <label>
