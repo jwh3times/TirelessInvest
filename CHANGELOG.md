@@ -13,6 +13,17 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.3.1] - 2026-11-14
+
+### Changed
+
+- The product requirements (PRD §6.4, §6.7 and Q4) record the ten-level risk dial as built,
+  default 5 (Moderate), and keep the original 1–5 dial only as the settings backtests saved on it
+  still use.
+- Data migrations have a rule of their own (ADR 0002, `docs/INFRASTRUCTURE.md` §6 and §8.3).
+  Schema changes stay additive. A migration that rewrites existing rows must leave them readable
+  by the previous release, and its header says what a rollback would see.
+
 ## [0.3.0] - 2026-11-13
 
 ### Added
