@@ -30,7 +30,32 @@ class RiskSettings(BaseModel):
     cash_buffer: float = Field(0.0, ge=0, lt=1, description="Fraction always held in cash.")
 
 
+# The risk dial: what each level does, by its mechanics alone. A level caps exposure; it is not
+# a loss limit, and the UI says so.
 RISK_PRESETS: dict[int, tuple[str, RiskSettings]] = {
+    1: (
+        "Preservation",
+        RiskSettings(max_position_weight=0.20, target_volatility=0.04, cash_buffer=0.10),
+    ),
+    2: (
+        "Preservation",
+        RiskSettings(max_position_weight=0.25, target_volatility=0.06, cash_buffer=0.05),
+    ),
+    3: ("Conservative", RiskSettings(max_position_weight=0.30, target_volatility=0.08)),
+    4: ("Conservative", RiskSettings(max_position_weight=0.35, target_volatility=0.10)),
+    5: ("Moderate", RiskSettings(max_position_weight=0.40, target_volatility=0.12)),
+    6: ("Moderate", RiskSettings(max_position_weight=0.50, target_volatility=0.15)),
+    7: ("Growth", RiskSettings(max_position_weight=0.65, target_volatility=0.18)),
+    8: ("Growth", RiskSettings(max_position_weight=0.80, target_volatility=0.22)),
+    9: ("Aggressive", RiskSettings(max_position_weight=1.0, target_volatility=0.28)),
+    10: ("Unconstrained", RiskSettings()),
+}
+DEFAULT_RISK_LEVEL = 5
+
+# The original five-level dial, frozen. Backtests saved on it were rewritten to these explicit
+# settings plus a `legacy_risk_level` marker, so they re-run unchanged (the migration
+# supabase/migrations/20261113000000_legacy_risk_levels.sql). Never edit these values.
+LEGACY_RISK_PRESETS: dict[int, tuple[str, RiskSettings]] = {
     1: (
         "Preservation",
         RiskSettings(max_position_weight=0.25, target_volatility=0.06, cash_buffer=0.05),

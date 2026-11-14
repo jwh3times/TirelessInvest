@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Results } from "../components/Results";
 import { api } from "../lib/api";
-import { dateTime } from "../lib/format";
+import { dateTime, riskLevelLabel } from "../lib/format";
 import type { BacktestRecord } from "../lib/types";
 
 export function BacktestPage() {
@@ -21,7 +21,8 @@ export function BacktestPage() {
       <h2>{name || c.strategy}</h2>
       <p className="muted">
         {c.strategy} · {c.symbols.join(", ")} · {c.start_date} → {c.end_date} · rebalance{" "}
-        {c.rebalance} · risk level {c.risk_level} · run {dateTime(created_at)}
+        {c.rebalance} · risk level{" "}
+        {riskLevelLabel(c.risk_level, c.legacy_risk_level)} · run {dateTime(created_at)}
       </p>
       <Results report={report} />
     </div>

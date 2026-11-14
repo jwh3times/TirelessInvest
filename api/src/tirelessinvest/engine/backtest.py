@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .data import Bars, PriceStore
 from .metrics import drawdown_series, monthly_returns, performance, risk_adjusted_verdict
-from .risk import RISK_PRESETS, RiskSettings
+from .risk import DEFAULT_RISK_LEVEL, LEGACY_RISK_PRESETS, RISK_PRESETS, RiskSettings
 from .simulator import Costs, SimulationResult, simulate
 from .strategies import Rebalance, build_strategy
 from .strategies.library import FixedWeights, FixedWeightsParams
@@ -67,8 +67,19 @@ class BacktestRequest(BaseModel):
     end_date: date
     starting_cash: float = Field(10_000, ge=100, le=100_000_000)
     rebalance: Rebalance | None = Field(None, description="Defaults to the strategy's own.")
-    risk_level: int = Field(5, ge=1, le=5, description="Risk preset; 5 = unconstrained.")
+    risk_level: int = Field(
+        DEFAULT_RISK_LEVEL,
+        ge=min(RISK_PRESETS),
+        le=max(RISK_PRESETS),
+        description="Risk dial level, 1-10; 5 = Moderate.",
+    )
     risk: RiskSettings | None = Field(None, description="Explicit settings; overrides risk_level.")
+    legacy_risk_level: int | None = Field(
+        None,
+        ge=min(LEGACY_RISK_PRESETS),
+        le=max(LEGACY_RISK_PRESETS),
+        description="Set on requests saved on the old 1-5 dial; `risk` holds its settings.",
+    )
     costs: Costs = Field(default_factory=Costs)
     rebalance_threshold: float = Field(
         0.005, ge=0, le=0.2, description="Skip trades smaller than this fraction of equity."
@@ -86,6 +97,10 @@ class BacktestRequest(BaseModel):
         self.benchmark = self.benchmark.strip().upper()
         if not SYMBOL_RE.match(self.benchmark):
             raise ValueError("invalid benchmark symbol")
+        # The marker labels a result "old 1-5 scale", so it must carry that level's settings.
+        legacy = self.legacy_risk_level
+        if legacy is not None and self.risk != LEGACY_RISK_PRESETS[legacy][1]:
+            raise ValueError("legacy_risk_level needs the explicit risk settings it stands for")
         return self
 
     def risk_settings(self) -> RiskSettings:

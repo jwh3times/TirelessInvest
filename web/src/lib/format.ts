@@ -25,6 +25,10 @@ export const date = (iso: string | null | undefined) =>
 export const dateTime = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "–";
 
+/** A backtest's risk level, naming the old five-level dial for backtests saved on it. */
+export const riskLevelLabel = (level: number, legacyLevel?: number | null) =>
+  legacyLevel != null ? `${legacyLevel} (old 1–5 scale)` : `${level}`;
+
 /** How the API's verdict judged a strategy against its benchmark, in words. */
 export const riskAdjustedLabel = (v: Verdict) =>
   !v.comparable

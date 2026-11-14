@@ -41,8 +41,10 @@ with simply buying and holding an index fund under the same costs.
   | Trend following | Hold a symbol only while it is above its moving average |
   | Short-term mean reversion | Buy recent losers within an uptrend. Behind a feature flag |
 
-- **Risk dial (1–5)**, kept separate from strategy choice. It caps position size and scales
-  exposure down to a volatility target. It never adds leverage.
+- **Risk dial (1–10, default 5, Moderate)**, kept separate from strategy choice. Each level caps
+  position size, scales exposure down to a volatility target, and at levels 1–2 keeps a cash floor.
+  It never adds leverage, and it is not a loss limit. Backtests saved on the earlier 1–5 dial
+  keep their old settings, re-run unchanged, and show as "old 1–5 scale".
 - **Universes:** S&P 500 ETF; large/mid/small-cap ETFs; multi-asset; sectors; and a
   deliberately labelled *survivorship-biased* list of today's mega caps.
 - **Accounts and roles:** Supabase Auth. One admin, set from the command line. Users get

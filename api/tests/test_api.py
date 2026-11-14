@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import shutil
 from datetime import date
 
 import pandas as pd
 import psycopg
 import pytest
-from conftest import auth, make_user, token_for
+from conftest import MIGRATIONS, auth, make_user, token_for
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
+
+from tirelessinvest.engine.backtest import BacktestRequest, run_backtest
+from tirelessinvest.engine.data import SyntheticPriceStore
+from tirelessinvest.engine.risk import LEGACY_RISK_PRESETS
+from tirelessinvest.jobs.migrate import apply_migrations
 
 BACKTEST = {
     "strategy": "momentum",
@@ -277,3 +285,138 @@ def test_make_admin_refuses_second_admin(client, db, capsys):
     ).fetchone()[0]
     assert make_admin(email, force=False) == 1
     assert "refusing" in capsys.readouterr().out
+
+
+LEGACY_MIGRATION = "20261113000000_legacy_risk_levels.sql"
+
+
+def old_scale_save(conn, user_id: str, **request) -> str:
+    """Save a backtest the way the five-level dial did: `risk_level` alone, no explicit `risk`
+    and no `legacy_risk_level` key, with the result that dial's preset produced."""
+    saved = BacktestRequest.model_validate({**BACKTEST, **request}).model_dump(mode="json")
+    del saved["legacy_risk_level"]
+    run = dict(saved)
+    if run["risk"] is None:
+        run["risk"] = LEGACY_RISK_PRESETS[run["risk_level"]][1].model_dump(mode="json")
+    report = run_backtest(BacktestRequest.model_validate(run), SyntheticPriceStore())
+    del report["config"]["legacy_risk_level"]
+    return insert_backtest(conn, user_id, saved, report["summary"], report)
+
+
+def insert_backtest(conn, user_id: str, request: dict, summary: dict, report: dict) -> str:
+    return conn.execute(
+        """
+        insert into public.backtests (user_id, strategy, request, summary, report, duration_ms)
+        values (%s, %s, %s, %s, %s, 1) returning id
+        """,
+        (user_id, request["strategy"], Jsonb(request), Jsonb(summary), Jsonb(report)),
+    ).fetchone()[0]
+
+
+@pytest.fixture
+def old_scale_database(empty_database_url, tmp_path):
+    """A database migrated up to, but not including, the legacy-risk-level migration."""
+    before = tmp_path / "before"
+    before.mkdir()
+    for path in MIGRATIONS.glob("*.sql"):
+        if path.name < LEGACY_MIGRATION:
+            shutil.copy(path, before / path.name)
+    apply_migrations(empty_database_url, before)
+    with psycopg.connect(empty_database_url, autocommit=True) as conn:
+        user_id = conn.execute(
+            "insert into auth.users (email) values ('old@example.test') returning id"
+        ).fetchone()[0]
+    return empty_database_url, str(user_id)
+
+
+def saved_rows(url: str) -> dict:
+    with psycopg.connect(url, row_factory=dict_row) as conn:
+        rows = conn.execute("select id, request, summary, report from public.backtests").fetchall()
+    return {row["id"]: row for row in rows}
+
+
+def test_migration_rewrites_old_scale_requests_to_explicit_old_settings(old_scale_database):
+    url, user_id = old_scale_database
+    explicit = {
+        "max_position_weight": 0.3,
+        "target_volatility": None,
+        "vol_lookback_days": 63,
+        "cash_buffer": 0.0,
+    }
+    with psycopg.connect(url, autocommit=True) as conn:
+        by_level = {level: old_scale_save(conn, user_id, risk_level=level) for level in range(1, 6)}
+        explicit_id = old_scale_save(conn, user_id, risk_level=2, risk=explicit)
+    before = saved_rows(url)
+
+    apply_migrations(url, MIGRATIONS)
+
+    after = saved_rows(url)
+    for level, backtest_id in by_level.items():
+        old = LEGACY_RISK_PRESETS[level][1].model_dump(mode="json")
+        assert after[backtest_id]["request"] == {
+            **before[backtest_id]["request"],
+            "risk": old,
+            "legacy_risk_level": level,
+        }
+        assert after[backtest_id]["report"]["config"]["legacy_risk_level"] == level
+        assert after[backtest_id]["summary"] == before[backtest_id]["summary"]
+    assert after[explicit_id] == before[explicit_id]
+
+
+def test_old_scale_backtest_reruns_identically_after_the_migration(client, db, old_scale_database):
+    url, old_user = old_scale_database
+    with psycopg.connect(url, autocommit=True) as conn:
+        old_id = old_scale_save(conn, old_user, risk_level=3)
+    apply_migrations(url, MIGRATIONS)
+    migrated = saved_rows(url)[old_id]
+
+    # The migrated row, served by the API, shows it used the old scale.
+    user_id, token = make_user(db)
+    backtest_id = insert_backtest(
+        db, user_id, migrated["request"], migrated["summary"], migrated["report"]
+    )
+    shown = client.get(f"/backtests/{backtest_id}", headers=auth(token)).json()["report"]
+    assert shown["config"]["legacy_risk_level"] == 3
+    [listed] = client.get("/backtests", headers=auth(token)).json()
+    assert (listed["risk_level"], listed["legacy_risk_level"]) == (3, 3)
+
+    # Re-running its request reproduces the original result, still marked legacy.
+    rerun = client.post("/backtests", json=migrated["request"], headers=auth(token))
+    assert rerun.status_code == 201, rerun.text
+    report = rerun.json()["report"]
+    assert report["summary"] == migrated["report"]["summary"]
+    assert report["config"]["legacy_risk_level"] == 3
+    newest = client.get("/backtests", headers=auth(token)).json()[0]
+    assert newest["legacy_risk_level"] == 3
+
+
+def test_new_backtests_carry_no_legacy_marker(client, db):
+    _, token = make_user(db)
+    created = client.post("/backtests", json={**BACKTEST, "risk_level": 10}, headers=auth(token))
+    assert created.status_code == 201, created.text
+    assert created.json()["report"]["config"]["legacy_risk_level"] is None
+    [listed] = client.get("/backtests", headers=auth(token)).json()
+    assert (listed["risk_level"], listed["legacy_risk_level"]) == (10, None)
+
+
+def test_catalog_serves_the_ten_level_dial(client, db):
+    _, token = make_user(db)
+    levels = client.get("/catalog", headers=auth(token)).json()["risk_levels"]
+    assert [(r["level"], r["label"]) for r in levels] == [
+        (1, "Preservation"),
+        (2, "Preservation"),
+        (3, "Conservative"),
+        (4, "Conservative"),
+        (5, "Moderate"),
+        (6, "Moderate"),
+        (7, "Growth"),
+        (8, "Growth"),
+        (9, "Aggressive"),
+        (10, "Unconstrained"),
+    ]
+    assert levels[4]["settings"] == {
+        "max_position_weight": 0.4,
+        "target_volatility": 0.12,
+        "vol_lookback_days": 63,
+        "cash_buffer": 0.0,
+    }
