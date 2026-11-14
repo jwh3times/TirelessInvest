@@ -146,7 +146,7 @@ Seeded flags:
 | Universe | A preset (§6.6), or a custom list of 1–50 symbols (needs `backtest:custom_universe`) |
 | Start / end date | End after start; end not in the future; range at most 30 years. UI default start: 2016-06-01 |
 | Simulated deposit | $100 – $100,000,000. Default $10,000 |
-| Risk level | Built: 1–5, default 5 (unconstrained). **Decided:** 1–10, default 5 (§6.7). Explicit settings can override the preset |
+| Risk level | 1–10, default 5 (Moderate) (§6.7). Explicit settings can override the preset |
 | Holdout | **Decided** (later Phase 1): optionally hold out the last N years, reported separately from the in-sample period |
 | Rebalance schedule | never / daily / weekly / monthly / quarterly. Defaults to the strategy's own |
 | Costs | Fee 0 bps and slippage 5 bps by default, adjustable |
@@ -220,18 +220,7 @@ research.
 The risk dial applies on top of the strategy. It caps exposure; it never redistributes freed-up
 weight to other symbols, and it never borrows.
 
-| Level | Label | Max per symbol | Volatility target | Always in cash |
-|---|---|---|---|---|
-| 1 | Preservation | 25% | 6% / yr | 5% |
-| 2 | Conservative | 35% | 10% / yr | – |
-| 3 | Moderate | 50% | 15% / yr | – |
-| 4 | Growth | 100% | 22% / yr | – |
-| 5 | Unconstrained | 100% | none | – |
-
-Volatility targeting estimates the proposed portfolio's volatility over the last 63 trading days.
-If that exceeds the target, all positions are scaled down proportionally.
-
-**Decided: a 1–10 dial, default 5** (Q4). Same mechanics, ten steps:
+A 1–10 dial, default 5 (Q4):
 
 | Level | Label | Max per symbol | Volatility target | Always in cash |
 |---|---|---|---|---|
@@ -246,14 +235,26 @@ If that exceeds the target, all positions are scaled down proportionally.
 | 9 | Aggressive | 100% | 28% / yr | – |
 | 10 | Unconstrained | 100% | none | – |
 
+Volatility targeting estimates the proposed portfolio's volatility over the last 63 trading days.
+If that exceeds the target, all positions are scaled down proportionally.
+
 - The default sits at about three-quarters of SPY's long-run volatility (~16%), so holding the
   index at the default is scaled down a little in turbulent periods. Unconstrained is a deliberate
   choice, not the default.
 - **A risk level promises only its mechanics.** The UI says plainly that it is not a loss limit.
   There is no "worst drawdown per level" figure, because drawdown depends on the strategy and
   universe as much as the level; each backtest shows its own worst drawdown next to SPY's.
-- Backtests saved on the old 1–5 scale are migrated once to the explicit settings they ran with,
-  so they re-run exactly as before, and are labelled "old 1–5 scale".
+- Backtests saved on the old 1–5 scale were migrated once to the explicit settings they ran with,
+  plus a `legacy_risk_level` marker, so they re-run exactly as before and are labelled "old 1–5
+  scale". The original dial is frozen in the code as `LEGACY_RISK_PRESETS`:
+
+  | Level | Label | Max per symbol | Volatility target | Always in cash |
+  |---|---|---|---|---|
+  | 1 | Preservation | 25% | 6% / yr | 5% |
+  | 2 | Conservative | 35% | 10% / yr | – |
+  | 3 | Moderate | 50% | 15% / yr | – |
+  | 4 | Growth | 100% | 22% / yr | – |
+  | 5 | Unconstrained | 100% | none | – |
 
 > **The original brief vs. what's built.** The original idea was a risk setting that runs from
 > "all in an index fund" to "full day trading in large/mid/small caps." The built design
@@ -395,7 +396,7 @@ questions, folded into the rows they refine.
 | Q1 | **What does success mean?** | Beating buy-and-hold SPY after costs on a **risk-adjusted** basis, not maximum profit. The verdict is decided by Sharpe against SPY's Sharpe; the CAGR difference stays in the sentence as context (§6.4). |
 | Q2 | **Can the public sign up?** | No. Public sign-up is to be closed (A8; still open in the built app) and stays invite-only until Phase 2's unattended-run metric is met (§9). The owner invites through Supabase, after reviewing existing accounts and giving Alpaca 30 days' notice. Whether to open sign-up is deferred until then. |
 | Q3 | **Can Phase 2 users override individual trades?** | No. Pause, resume and close only (P6). |
-| Q4 | **What does a risk level promise?** | Only its mechanics (per-symbol cap, volatility target, cash floor), stated as not a loss limit. The dial becomes 1–10, default 5 (§6.7). |
+| Q4 | **What does a risk level promise?** | Only its mechanics (per-symbol cap, volatility target, cash floor), stated as not a loss limit. The dial is 1–10, default 5 (§6.7). |
 | Q5 | **Should the dial choose the strategy?** | No. They stay independent; a level may recommend a strategy but never selects one. |
 | Q6 | **Is 2016+ history enough?** | Not for trusting a strategy. Results state their 2016+ window, and the history gate (P11) requires testing through 2000–02 and 2008–09 before paper trading. Alpaca Basic stays the only data source until then; Sharadar is bought only for the gate. |
 | Q7 | **Should the product guard against overfitting?** | Yes: no parameter optimiser, ever, and an optional holdout period as a later Phase 1 item. |

@@ -224,7 +224,9 @@ All tables have RLS on with no policies; grants for `anon` and `authenticated` a
 
 **Migrations workflow:** add a new timestamped file under `supabase/migrations/`, test it
 locally with `supabase db reset`, and merge it with the code that needs it: the release applies it
-to production before that code takes traffic (§8.3). Keep migrations additive.
+to production before that code takes traffic (§8.3). Keep schema changes additive; a data
+migration that rewrites rows must leave them readable by the previous release
+([ADR 0002](adr/0002-data-migrations-keep-rows-readable-by-the-previous-release.md)).
 
 ## 7. Security model
 
@@ -331,14 +333,17 @@ with their `DATABASE_URL`. The runner reads `supabase/migrations/` from the imag
 them.
 
 So a migration ships by merging it with the code that needs it. Nobody runs `supabase db push`
-against production after the first-time setup of a new project (§10 step 2). Make migrations
+against production after the first-time setup of a new project (§10 step 2). Make schema changes
 additive (add columns or tables; drop them in a later release), so the previous deploy keeps
-working while the new one starts, and so does an older image after an emergency rollback.
+working while the new one starts, and so does an older image after an emergency rollback. A data
+migration, one that rewrites existing rows, must leave them readable by the previous release, and
+its header says what a rollback would see
+([ADR 0002](adr/0002-data-migrations-keep-rows-readable-by-the-previous-release.md)).
 
 **Rollback** is a revert: revert the pull request and merge the revert, which is a new release
 (fix forward). A revert does not undo a migration already applied; the schema keeps it, which is
-safe because migrations are additive. Railway's and Cloudflare Pages' own rollback buttons are an
-emergency stop only, followed by a revert.
+safe because schema changes are additive and rewritten rows stay readable. Railway's and
+Cloudflare Pages' own rollback buttons are an emergency stop only, followed by a revert.
 
 ### 8.4 Container image (`api/Dockerfile`)
 
