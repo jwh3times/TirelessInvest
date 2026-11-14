@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
-import { useAuth } from "./lib/auth";
+import { needsPassword, useAuth } from "./lib/auth";
 import { supabase } from "./lib/supabase";
 import { AccountPage } from "./pages/AccountPage";
 import { AdminPage } from "./pages/AdminPage";
@@ -8,11 +8,13 @@ import { BacktestPage } from "./pages/BacktestPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { LabPage } from "./pages/LabPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SetPasswordPage } from "./pages/SetPasswordPage";
 
 export function App() {
   const { session, loading, me, meError } = useAuth();
   if (loading) return <div className="center muted">Loading…</div>;
   if (!session) return <LoginPage />;
+  if (needsPassword(session.user)) return <SetPasswordPage />;
   if (meError)
     return (
       <div className="center">

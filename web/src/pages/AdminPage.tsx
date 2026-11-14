@@ -89,7 +89,7 @@ function UsersPanel() {
         </table>
       </div>
       <p className="hint">
-        Unchecking every permission effectively suspends a user. New sign-ups get the defaults:{" "}
+        Unchecking every permission effectively suspends a user. New users get the defaults:{" "}
         {perms.data!.filter((p) => p.granted_by_default).map((p) => p.key).join(", ") || "none"}.
       </p>
     </section>

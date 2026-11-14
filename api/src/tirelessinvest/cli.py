@@ -26,7 +26,7 @@ def make_admin(email: str, force: bool) -> int:
             (email,),
         ).fetchone()
         if row is None:
-            print(f"no user with email {email}; sign up in the app first")
+            print(f"no user with email {email}; accept an invitation first")
             return 1
     print(f"{email} is now admin. Sign out and back in so your token picks up the role.")
     return 0

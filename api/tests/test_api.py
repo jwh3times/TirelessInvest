@@ -61,8 +61,11 @@ def test_user_metadata_cannot_grant_admin(client, db):
     assert client.get("/admin/users", headers=auth(sneaky)).status_code == 403
 
 
-def test_signup_grants_default_permissions(client, db):
-    _, token = make_user(db)
+@pytest.mark.parametrize("invited", [False, True], ids=["created", "invited"])
+def test_new_user_receives_default_permissions(client, db, invited):
+    """Sign-up is closed, so accounts come from Supabase invitations (or the dashboard). Either
+    way the user is a new auth.users row, and gets the defaults."""
+    _, token = make_user(db, invited=invited)
     me = client.get("/me", headers=auth(token)).json()
     assert me["permissions"] == ["backtest:run"]
     assert me["flags"] == {"live_trading": False, "strategy.mean_reversion": False}
