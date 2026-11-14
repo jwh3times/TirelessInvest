@@ -13,6 +13,20 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.6.0] - 2026-11-14
+
+### Added
+
+- Every backtest result states its data window, right under the verdict: the first and last
+  dates it had prices for. The first can be later than the requested start, since price history
+  currently begins around 2016.
+- When that period spans neither the 2000–02 nor the 2008–09 bear market, the result says so:
+  "Tested only from <first> to <last>: this period has no long bear market." The notice depends
+  only on the dates, so it goes away by itself once longer price history lets a backtest reach
+  back through one of them.
+- Backtests saved earlier show their data window too, worked out from the dates they stored.
+- Backtest reports from the API carry `data_window`, with `first_date`, `last_date` and `notice`.
+
 ## [0.5.0] - 2026-11-14
 
 ### Added

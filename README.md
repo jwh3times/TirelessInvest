@@ -32,6 +32,12 @@ with simply buying and holding an index fund under the same costs.
     beats the benchmark's over the same dates and costs, with the CAGR difference as context
     ([PRD §6.4](docs/PRD.md#64-running-a-backtest)). With no volatility a Sharpe ratio is
     undefined, and the report says no comparison is possible.
+  - A **data window** on every report: the first and last dates the backtest had prices for,
+    which can start later than the requested date. Under the verdict, the results page says
+    "Tested only from … to …: this period has no long bear market." when the window spans neither
+    the 2000–02 nor the 2008–09 bear market in full (peak to trough, by month), and otherwise
+    states the dates tested. Backtests saved before the window existed get it from their stored
+    dates.
 - **Strategies:**
 
   | Strategy | What it does |
@@ -201,7 +207,8 @@ from the GitHub `production` environment, and its Cloudflare token from 1Passwor
 ## Known limitations (read these before believing a result)
 
 - **Alpaca's free history starts around 2016.** No 2008, no dot-com crash. A strategy that
-  looks great from 2016 onward has only been tested in one mostly-bullish decade.
+  looks great from 2016 onward has only been tested in one mostly-bullish decade. Every result
+  states its data window and says when it has no long bear market.
 - **Survivorship bias.** Any list of stocks picked today is biased toward winners. Prefer ETF
   universes.
 - **Overfitting.** If you tune parameters until the past looks good, you are fitting noise.
