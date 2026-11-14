@@ -113,6 +113,9 @@ def list_backtests(
                    request ->> 'start_date' as start_date,
                    request ->> 'end_date' as end_date,
                    request ->> 'starting_cash' as starting_cash,
+                   (request ->> 'risk_level')::int as risk_level,
+                   -- Set on backtests saved on the old five-level dial (#22).
+                   (request ->> 'legacy_risk_level')::int as legacy_risk_level,
                    -- Rows saved before the verdict existed derive one, which needs the
                    -- benchmark's Sharpe from the large report; other rows never read it.
                    case when summary ? 'verdict' then null

@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, send } from "../lib/api";
-import { dateTime, money, pct, riskAdjustedLabel, signedPct } from "../lib/format";
+import {
+  dateTime,
+  money,
+  pct,
+  riskAdjustedLabel,
+  riskLevelLabel,
+  signedPct,
+} from "../lib/format";
 import type { BacktestListItem } from "../lib/types";
 
 export function HistoryPage() {
@@ -26,7 +33,7 @@ export function HistoryPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Name / strategy</th><th>Universe</th><th>Period</th>
+              <th>Name / strategy</th><th>Universe</th><th>Period</th><th>Risk</th>
               <th className="num">Deposit</th><th className="num">Final</th>
               <th className="num">CAGR</th><th className="num">vs bench</th><th>Verdict</th>
               <th className="num">Max DD</th><th>Run</th><th />
@@ -42,6 +49,7 @@ export function HistoryPage() {
                     {b.universe.preset ?? b.universe.symbols?.join(" ")}
                   </td>
                   <td className="small">{b.start_date} → {b.end_date}</td>
+                  <td className="small">{riskLevelLabel(b.risk_level, b.legacy_risk_level)}</td>
                   <td className="num">{money(Number(b.starting_cash))}</td>
                   <td className="num">{money(s.end_value)}</td>
                   <td className="num">{pct(s.cagr)}</td>

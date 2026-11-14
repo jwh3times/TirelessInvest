@@ -255,7 +255,7 @@ export function BacktestForm({ catalog, canUseCustomUniverse, busy, onSubmit }: 
           <input
             type="range"
             min={1}
-            max={5}
+            max={catalog.risk_levels.length}
             value={riskLevel}
             onChange={(e) => setRiskLevel(Number(e.target.value))}
           />
@@ -265,8 +265,14 @@ export function BacktestForm({ catalog, canUseCustomUniverse, busy, onSubmit }: 
             ? `Scales exposure down when recent volatility exceeds ${(risk.settings.target_volatility * 100).toFixed(0)}%/yr. `
             : "No volatility cap. "}
           Max {(risk.settings.max_position_weight * 100).toFixed(0)}% in any one symbol
-          {risk.settings.cash_buffer ? `, ${risk.settings.cash_buffer * 100}% always in cash` : ""}
+          {risk.settings.cash_buffer
+            ? `, ${(risk.settings.cash_buffer * 100).toFixed(0)}% always in cash`
+            : ""}
           . Risk only limits exposure; it never adds leverage.
+        </p>
+        <p className="hint">
+          <strong>A risk level is not a loss limit.</strong> It caps how much is exposed, and a
+          portfolio at any level can still lose money.
         </p>
       </fieldset>
 

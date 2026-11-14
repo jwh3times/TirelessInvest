@@ -59,6 +59,8 @@ export interface BacktestRequest {
   starting_cash: number;
   rebalance?: Rebalance | null;
   risk_level: number;
+  /** Set on backtests saved on the old 1–5 dial; their explicit `risk` holds that level's settings. */
+  legacy_risk_level?: number | null;
   costs: { fee_bps: number; slippage_bps: number };
   benchmark: string;
 }
@@ -125,6 +127,8 @@ export interface BacktestListItem {
   start_date: string;
   end_date: string;
   starting_cash: string;
+  risk_level: number;
+  legacy_risk_level: number | null;
   summary: Metrics;
   verdict: Verdict;
 }

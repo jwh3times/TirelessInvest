@@ -1,3 +1,4 @@
+import math
 from datetime import date
 
 import numpy as np
@@ -7,7 +8,12 @@ import pytest
 from tirelessinvest.engine.backtest import BacktestError, BacktestRequest, run_backtest
 from tirelessinvest.engine.data import Bars, SyntheticPriceStore, synthetic_bars
 from tirelessinvest.engine.metrics import performance, risk_adjusted_verdict
-from tirelessinvest.engine.risk import RiskSettings, apply_risk
+from tirelessinvest.engine.risk import (
+    LEGACY_RISK_PRESETS,
+    RISK_PRESETS,
+    RiskSettings,
+    apply_risk,
+)
 from tirelessinvest.engine.simulator import Costs, decision_days, simulate
 from tirelessinvest.engine.strategies import STRATEGIES, Strategy, build_strategy
 from tirelessinvest.engine.strategies.base import StrategyParams
@@ -226,3 +232,108 @@ def test_request_validation():
             start_date=date(2021, 1, 1),
             end_date=date(2020, 1, 1),
         )
+
+
+# The ten-level dial (#22): label, max per symbol, volatility target, cash floor.
+TEN_LEVELS = {
+    1: ("Preservation", 0.20, 0.04, 0.10),
+    2: ("Preservation", 0.25, 0.06, 0.05),
+    3: ("Conservative", 0.30, 0.08, 0.0),
+    4: ("Conservative", 0.35, 0.10, 0.0),
+    5: ("Moderate", 0.40, 0.12, 0.0),
+    6: ("Moderate", 0.50, 0.15, 0.0),
+    7: ("Growth", 0.65, 0.18, 0.0),
+    8: ("Growth", 0.80, 0.22, 0.0),
+    9: ("Aggressive", 1.0, 0.28, 0.0),
+    10: ("Unconstrained", 1.0, None, 0.0),
+}
+
+
+def realized_vol(close: pd.Series, lookback: int = 63) -> float:
+    return float(close.pct_change().iloc[-lookback:].dropna().std(ddof=1)) * math.sqrt(252)
+
+
+def test_the_dial_has_ten_levels():
+    assert sorted(RISK_PRESETS) == list(range(1, 11))
+
+
+@pytest.mark.parametrize("level", sorted(TEN_LEVELS))
+def test_each_risk_level_applies_its_cap_volatility_target_and_cash_floor(level):
+    label, cap, target, cash = TEN_LEVELS[level]
+    name, settings = RISK_PRESETS[level]
+    assert name == label
+    wanted = pd.Series({"A": 1.0})
+
+    # A calm symbol never reaches the volatility target: only the cap and the cash floor bind.
+    calm = synthetic_bars(["A"], date(2020, 1, 1), date(2020, 12, 31), annual_vol=0.01).close
+    assert apply_risk(wanted, calm, settings)["A"] == pytest.approx(cap * (1 - cash))
+
+    # A wild one breaches every level's target, so exposure scales down to it.
+    wild = synthetic_bars(["A"], date(2020, 1, 1), date(2020, 12, 31), annual_vol=0.60).close
+    vol = realized_vol(wild["A"]) * cap
+    scale = 1.0 if target is None else min(1.0, target / vol)
+    assert target is None or scale < 1.0
+    assert apply_risk(wanted, wild, settings)["A"] == pytest.approx(cap * scale * (1 - cash))
+
+
+def test_old_five_level_presets_are_kept_for_saved_backtests():
+    old = {level: (label, s.model_dump()) for level, (label, s) in LEGACY_RISK_PRESETS.items()}
+    base = {"vol_lookback_days": 63}
+    assert old == {
+        1: (
+            "Preservation",
+            {**base, "max_position_weight": 0.25, "target_volatility": 0.06, "cash_buffer": 0.05},
+        ),
+        2: (
+            "Conservative",
+            {**base, "max_position_weight": 0.35, "target_volatility": 0.10, "cash_buffer": 0.0},
+        ),
+        3: (
+            "Moderate",
+            {**base, "max_position_weight": 0.50, "target_volatility": 0.15, "cash_buffer": 0.0},
+        ),
+        4: (
+            "Growth",
+            {**base, "max_position_weight": 1.0, "target_volatility": 0.22, "cash_buffer": 0.0},
+        ),
+        5: (
+            "Unconstrained",
+            {**base, "max_position_weight": 1.0, "target_volatility": None, "cash_buffer": 0.0},
+        ),
+    }
+
+
+def make_request(**kwargs) -> BacktestRequest:
+    return BacktestRequest(
+        strategy="momentum",
+        universe={"preset": "multi_asset"},
+        start_date=date(2020, 1, 1),
+        end_date=date(2021, 1, 1),
+        **kwargs,
+    )
+
+
+def test_risk_level_defaults_to_moderate_and_accepts_one_to_ten():
+    assert make_request().risk_level == 5
+    assert make_request().risk_settings() == RISK_PRESETS[5][1]
+    assert make_request(risk_level=10).risk_settings() == RISK_PRESETS[10][1]
+    for bad in (0, 11):
+        with pytest.raises(ValueError):
+            make_request(risk_level=bad)
+
+
+def test_explicit_risk_settings_override_the_level():
+    explicit = RiskSettings(max_position_weight=0.33)
+    assert make_request(risk_level=2, risk=explicit).risk_settings() == explicit
+
+
+def test_legacy_risk_level_needs_the_explicit_settings_it_stands_for():
+    old = LEGACY_RISK_PRESETS[3][1]
+    marked = make_request(risk_level=3, risk=old, legacy_risk_level=3)
+    assert marked.risk_settings() == old
+    with pytest.raises(ValueError, match="legacy_risk_level"):
+        make_request(risk_level=3, legacy_risk_level=3)
+    with pytest.raises(ValueError, match="legacy_risk_level"):
+        make_request(risk_level=3, risk=LEGACY_RISK_PRESETS[2][1], legacy_risk_level=3)
+    with pytest.raises(ValueError):
+        make_request(risk=old, legacy_risk_level=6)
