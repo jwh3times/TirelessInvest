@@ -13,6 +13,23 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.0] - 2026-11-14
+
+### Added
+
+- A backtest can hold out its last years: the form's "Hold out the last … years" field reports
+  those years separately from the rest, to check a strategy on a period it wasn't tuned on. The
+  simulation still runs once, straight through, so the holdout starts from where the portfolio
+  stood, not from a fresh deposit.
+- With a holdout, the results page shows the in-sample and held-out periods side by side, each
+  with its own risk-adjusted verdict against SPY over its own dates, its annual return, Sharpe
+  ratio, worst drawdown and volatility. The full-period results stay as they were.
+- A holdout that would leave less than a year in-sample is refused with a message saying how to
+  fix it, whether the requested dates or the available price history fall short.
+- Backtest requests to the API take an optional `holdout_years`, and reports carry `in_sample` and
+  `holdout` sections, each with its dates, summary metrics, the benchmark's summary and a verdict.
+  Both are null without a holdout.
+
 ## [0.6.0] - 2026-11-14
 
 ### Added
