@@ -211,7 +211,7 @@ Defined in `supabase/migrations/20261110000000_init.sql`.
 | Table | Purpose | Key points |
 |---|---|---|
 | `auth.users` | Supabase-managed accounts | Admin = `raw_app_meta_data.role = 'admin'` |
-| `permissions` | Catalog of permission keys | `granted_by_default` drives sign-up grants |
+| `permissions` | Catalog of permission keys | `granted_by_default` drives new users' grants |
 | `user_permissions` | Who holds which permission | Filled by a trigger on new `auth.users` rows |
 | `feature_flags` | Global flag values | Seeded: `strategy.mean_reversion`, `live_trading` |
 | `feature_flag_overrides` | Per-user flag values | Override wins over the global value |
@@ -233,6 +233,7 @@ migration that rewrites rows must leave them readable by the previous release
 | Concern | Control |
 |---|---|
 | Who is calling | Every API route except `/health` needs a valid Supabase JWT: signature, `exp`, `aud=authenticated`, and `iss` checked. |
+| Getting an account | Invitation only: sign-up is off in Supabase (§10 step 2.5; `[auth] enable_signup = false` locally), and the owner invites each person. The app's set-password screen for invitees keys on `invited_at` and a `password_set` flag in `user_metadata`; it gates only that screen, never a permission. |
 | Admin rights | `app_metadata.role` only, which needs the service role to change. A test proves `user_metadata` can't grant admin. |
 | Becoming admin | No API or UI path. Run `python -m tirelessinvest.cli make-admin <email>` with production `DATABASE_URL`; it refuses if an admin exists. The user then signs out and back in to refresh their token. |
 | Permissions and flags | Checked on the server for each request. UI hiding is cosmetic. |
@@ -430,12 +431,16 @@ recognize aren't registered, so a typo isn't synced forever.
 2. Under **Authentication → URL Configuration**, set the Site URL to
    `https://tirelessinvest.com`.
 3. Under **Authentication → SMTP Settings**, configure a custom SMTP provider (e.g. Resend,
-   Postmark, SES). **This is required before anyone else can sign up.** Supabase's built-in
-   email service only delivers to members of your Supabase organization, on every plan, and is
-   heavily rate-limited.
+   Postmark, SES). **This is required before an invitation can reach anyone else.**
+   Supabase's built-in email service only delivers to members of your Supabase organization, on
+   every plan, and is heavily rate-limited.
 4. Under **Connect**, copy the **Session pooler** connection string for `DATABASE_URL`.
 5. Under **Authentication → Sign In / Providers**, turn off **Allow new users to sign up**.
-   Accounts are invite-only ([PRD Q2](PRD.md#11-product-decisions)).
+   Accounts are invite-only ([PRD Q2](PRD.md#11-product-decisions)): invite people from
+   **Authentication → Users → Add user → Send invitation**. The invitation links to the Site
+   URL, where the app asks the invited person to set a password before continuing. Before the
+   first invitation, give Alpaca the notice its terms require
+   ([PRD §10](PRD.md#10-compliance-and-legal-constraints)).
 
 ### Step 3: Railway
 
@@ -514,7 +519,7 @@ recognize aren't registered, so a typo isn't synced forever.
 |---|---|---|
 | Alpaca down | Backtests needing a new symbol fail (502); stored symbols still work; nightly sync fails | The next nightly run recovers automatically |
 | Supabase paused (free plan) | Everything fails | Use Pro, or accept pausing during development |
-| Supabase Auth email limits | Other users can't confirm sign-up | Custom SMTP (§10 step 2.3) |
+| Supabase Auth email limits | Invitations don't reach other users | Custom SMTP (§10 step 2.3) |
 | A migration fails at deploy | The new `api` and `price-sync` deploys stop and the previous ones keep running; the release's `web` job fails after 15 minutes, so the web app stays on the previous release | Fix forward: merge a fix for the migration (§8.3) |
 | The API deploy fails or is slow | The `web` job fails after 15 minutes without deploying | Check the `api` deploy in Railway; fix forward, or re-run the workflow once the API is up |
 | JWT signing key rotated | Tokens briefly rejected | The API caches published keys for 10 minutes; wait about 20 minutes after creating a standby key before rotating |

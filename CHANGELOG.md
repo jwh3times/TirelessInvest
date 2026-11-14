@@ -13,6 +13,27 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.4.0] - 2026-11-14
+
+### Added
+
+- An invited person who follows Supabase's invitation email arrives signed in and is asked to
+  choose a password before using the app. From then on they sign in with it like anyone else, and
+  get the same default permissions as before.
+- An expired or already-used invitation link says so on the sign-in page, instead of showing a
+  bare form.
+
+### Changed
+
+- Local development matches production: sign-up is off in the local Supabase configuration.
+  Create your local account by inviting yourself from Supabase Studio; the README walks through
+  it, and the email lands in the local inbox.
+
+### Removed
+
+- The sign-in page no longer offers to create an account. TirelessInvest is invite-only: accounts
+  come from the owner's Supabase invitations.
+
 ## [0.3.1] - 2026-11-14
 
 ### Changed
