@@ -147,7 +147,7 @@ Seeded flags:
 | Start / end date | End after start; end not in the future; range at most 30 years. UI default start: 2016-06-01 |
 | Simulated deposit | $100 – $100,000,000. Default $10,000 |
 | Risk level | 1–10, default 5 (Moderate) (§6.7). Explicit settings can override the preset |
-| Holdout | **Decided** (later Phase 1): optionally hold out the last N years, reported separately from the in-sample period |
+| Holdout | Optional: hold out the last N whole years (1 or more) before the end date, reported separately from the in-sample period; at least a year must remain in-sample, or the request is refused. **Decided** (Q7) and built (#26) |
 | Rebalance schedule | never / daily / weekly / monthly / quarterly. Defaults to the strategy's own |
 | Costs | Fee 0 bps and slippage 5 bps by default, adjustable |
 | Rebalance threshold | Skip trades smaller than 0.5% of equity, to avoid pointless churn |
@@ -176,7 +176,10 @@ Seeded flags:
   it says no risk-adjusted comparison is possible.
 - **Decided** (Q6): every result states its data window, e.g. "Tested 2016 onward only: no long
   bear market in this period", until longer history is available.
-- **Decided** (Q7): with a holdout, the in-sample and held-out periods are reported separately.
+- **Decided** (Q7) and built (#26): with a holdout, the in-sample and held-out periods are
+  reported side by side, each with its own metrics and risk-adjusted verdict against the
+  benchmark. The run stays continuous, and the holdout is measured from the portfolio's value at
+  the last in-sample close.
 - Metrics: total return, CAGR, volatility, Sharpe, Sortino, max drawdown and its duration,
   Calmar, beta, alpha, correlation, best/worst day, total fees and slippage, trade count, annual
   turnover, average invested exposure. Each is shown next to the benchmark's value where that
@@ -294,7 +297,8 @@ If that exceeds the target, all positions are scaled down proportionally.
   through both.
 - **Daily bars only.** No intraday data, so no day trading.
 - **Overfitting isn't detected.** Nothing stops a user from tuning parameters until the past
-  looks good. A holdout option is decided (Q7).
+  looks good. The optional holdout (§6.4) shows when a strategy only shines on the period it was
+  tuned on.
 - **No rate limiting** on the backtest endpoint.
 - **No account deletion** (A7, decided).
 - **Public sign-up is still open** in the built app (A8 closes it).

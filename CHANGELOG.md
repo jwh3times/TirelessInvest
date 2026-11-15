@@ -13,6 +13,14 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.1] - 2026-11-14
+
+### Changed
+
+- The product requirements (PRD §6.4 and §6.10) record the holdout period as built: the last N
+  whole years reported beside the in-sample period, each with its own verdict, and refused when
+  under a year would remain in-sample.
+
 ## [0.7.0] - 2026-11-14
 
 ### Added
