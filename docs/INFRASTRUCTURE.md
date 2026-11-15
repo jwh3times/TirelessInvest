@@ -225,8 +225,8 @@ All tables have RLS on with no policies; grants for `anon` and `authenticated` a
 
 **Migrations workflow:** add a new timestamped file under `supabase/migrations/`, test it
 locally with `pnpm exec supabase db reset`, and merge it with the code that needs it: the
-release applies it to production before that code takes traffic (§8.3). Keep schema changes additive; a data
-migration that rewrites rows must leave them readable by the previous release
+release applies it to production before that code takes traffic (§8.3). Keep schema changes
+additive; a data migration that rewrites rows must leave them readable by the previous release
 ([ADR 0002](adr/0002-data-migrations-keep-rows-readable-by-the-previous-release.md)).
 
 ## 7. Security model
@@ -335,10 +335,11 @@ with their `DATABASE_URL`. The runner reads `supabase/migrations/` from the imag
 `python -m tirelessinvest.jobs.migrate --dry-run` lists the pending migrations without applying
 them.
 
-So a migration ships by merging it with the code that needs it. Nobody runs `supabase db push`
-against production after the first-time setup of a new project (§10 step 2). Make schema changes
-additive (add columns or tables; drop them in a later release), so the previous deploy keeps
-working while the new one starts, and so does an older image after an emergency rollback. A data
+So a migration ships by merging it with the code that needs it. Nobody runs
+`pnpm exec supabase db push --remote` against production after the first-time setup of a new
+project (§10 step 2). Make schema changes additive (add columns or tables; drop them in a later
+release), so the previous deploy keeps working while the new one starts, and so does an older
+image after an emergency rollback. A data
 migration, one that rewrites existing rows, must leave them readable by the previous release, and
 its header says what a rollback would see
 ([ADR 0002](adr/0002-data-migrations-keep-rows-readable-by-the-previous-release.md)).

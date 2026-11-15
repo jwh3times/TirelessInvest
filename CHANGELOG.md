@@ -13,6 +13,23 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.3] - 2026-11-15
+
+### Changed
+
+- Local development pins the Supabase CLI at 3.1.0 in a root `package.json`: run `pnpm install`
+  at the repository root, then `pnpm exec supabase start`, instead of installing the CLI yourself.
+  Dependabot proposes each new CLI version as its own pull request, so moving to CLI v4 is a
+  deliberate merge.
+- The local Supabase config uses the `enabled` spelling for the email and phone providers, which
+  CLI v4 requires, so `supabase start` and `stop` no longer print deprecation warnings. Sign-up
+  stays closed and password sign-in still works.
+
+### Fixed
+
+- The first-time production setup's `db push`, and the `migration list` check, now pass `--remote`:
+  the Supabase CLI 3.x runs both against the local database unless told otherwise.
+
 ## [0.7.2] - 2026-11-15
 
 ### Changed
