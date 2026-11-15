@@ -49,7 +49,7 @@ S&P 500 index fund.
 | G2 | Always compare against buying and holding an index fund under the same costs. | Built |
 | G3 | Make risk a single, understandable control (the risk dial), separate from strategy choice. | Built |
 | G4 | Produce results that are hard to fool: no look-ahead, realistic costs, warnings about known biases. | Built |
-| G5 | Users have accounts; the owner is the sole admin and controls permissions and feature flags. Accounts are by invitation only (Q2). | Built; invite-only Decided |
+| G5 | Users have accounts; the owner is the sole admin and controls permissions and feature flags. Accounts are by invitation only (Q2). | Built |
 | G6 | Run simulated ("paper") portfolios that trade by themselves on each trading day's end-of-day prices, with no user effort after setup. | Decided (Phase 2) |
 | G7 | Eventually trade real money in the owner's own brokerage account. | Decided (Phase 4) |
 
@@ -98,21 +98,21 @@ S&P 500 index fund.
 
 | ID | Requirement | Status |
 |---|---|---|
-| A1 | Users sign up and sign in with email and password, through Supabase Auth. | Built |
+| A1 | Users sign in with email and password, through Supabase Auth. There is no sign-up: an invited user sets a password on first arrival (A8). | Built |
 | A2 | The API verifies every request's access token: signature, expiry, audience and issuer. | Built |
 | A3 | The admin role is stored only in Supabase `app_metadata`, which users cannot edit. It is never read from `user_metadata`, which users can edit. A test proves a user can't make themselves admin. | Built |
 | A4 | There is no UI or API to grant admin. A command-line tool makes the first admin and refuses a second unless `--force` is passed. | Built |
-| A5 | New sign-ups automatically receive the default permissions. | Built |
+| A5 | New users automatically receive the default permissions. | Built |
 | A6 | Users can delete their own backtests. | Built |
-| A7 | Users can delete their own account, self-serve, in the MVP. Deletion is immediate and permanent behind a typed confirmation, and removes everything the user owns: backtests, permissions, flag overrides, and later their paper portfolios. Admin audit-log entries about them are kept with their identity removed. | Decided (Q8) |
-| A8 | Public sign-up is closed. The owner invites users through Supabase's built-in invitation, after reviewing the accounts that already exist. Before the first invitation, the owner gives Alpaca the 30 days' written notice its terms require (§10). | Decided (Q2) |
+| A7 | Users can delete their own account, self-serve, in the MVP. Deletion is immediate and permanent behind a typed confirmation, and removes everything the user owns: backtests, permissions, flag overrides, and later their paper portfolios. Admin audit-log entries about them are kept with their identity removed. The admin account can't be deleted through the app. | Built (#25), from the Account page; paper portfolios come with Phase 2 |
+| A8 | Public sign-up is closed. The owner invites users through Supabase's built-in invitation, after reviewing the accounts that already exist. Before the first invitation, the owner gives Alpaca the 30 days' written notice its terms require (§10). | Built (#24); the Alpaca notice is still owed before the first invitation |
 
 ### 6.2 Permissions
 
 Admins hold every permission implicitly. Permissions are a catalog in the database, so adding
 one needs no code change to the admin UI.
 
-| Permission | Default on sign-up | Grants |
+| Permission | Default for new users | Grants |
 |---|---|---|
 | `backtest:run` | Yes | Run backtests on preset universes |
 | `backtest:custom_universe` | No | Run backtests on custom symbol lists |
@@ -174,8 +174,10 @@ Seeded flags:
   ratio against SPY's over the same dates, after costs, and the sentence still reports the CAGR
   difference and both volatilities as context. When a Sharpe ratio is undefined (no volatility),
   it says no risk-adjusted comparison is possible.
-- **Decided** (Q6): every result states its data window, e.g. "Tested 2016 onward only: no long
-  bear market in this period", until longer history is available.
+- **Decided** (Q6) and built (#23): every result states its data window, the first and last
+  dates it had prices for. When that window spans neither the 2000–02 nor the 2008–09 bear
+  market in full (peak to trough, by month), it says "Tested only from <first> to <last>: this
+  period has no long bear market."
 - **Decided** (Q7) and built (#26): with a holdout, the in-sample and held-out periods are
   reported side by side, each with its own metrics and risk-adjusted verdict against the
   benchmark. The run stays continuous, and the holdout is measured from the portfolio's value at
@@ -292,7 +294,7 @@ If that exceeds the target, all positions are scaled down proportionally.
 ### 6.10 Known Phase 1 limitations
 
 - **Price history starts around 2016** (Alpaca's free data). There's no 2008 crash or dot-com
-  bust, so strategies are tested on one mostly-rising decade. Results will say so (Q6), and the
+  bust, so strategies are tested on one mostly-rising decade. Results say so (Q6), and the
   history gate (§7, P11) stops a strategy reaching paper trading until it has been tested
   through both.
 - **Daily bars only.** No intraday data, so no day trading.
@@ -300,8 +302,6 @@ If that exceeds the target, all positions are scaled down proportionally.
   looks good. The optional holdout (§6.4) shows when a strategy only shines on the period it was
   tuned on.
 - **No rate limiting** on the backtest endpoint.
-- **No account deletion** (A7, decided).
-- **Public sign-up is still open** in the built app (A8 closes it).
 
 ---
 
@@ -398,7 +398,7 @@ questions, folded into the rows they refine.
 | # | Question | Decision |
 |---|---|---|
 | Q1 | **What does success mean?** | Beating buy-and-hold SPY after costs on a **risk-adjusted** basis, not maximum profit. The verdict is decided by Sharpe against SPY's Sharpe; the CAGR difference stays in the sentence as context (§6.4). |
-| Q2 | **Can the public sign up?** | No. Public sign-up is to be closed (A8; still open in the built app) and stays invite-only until Phase 2's unattended-run metric is met (§9). The owner invites through Supabase, after reviewing existing accounts and giving Alpaca 30 days' notice. Whether to open sign-up is deferred until then. |
+| Q2 | **Can the public sign up?** | No. Public sign-up is closed (A8, built in #24) and stays invite-only until Phase 2's unattended-run metric is met (§9). The owner invites through Supabase, after reviewing existing accounts and giving Alpaca 30 days' notice. Whether to open sign-up is deferred until then. |
 | Q3 | **Can Phase 2 users override individual trades?** | No. Pause, resume and close only (P6). |
 | Q4 | **What does a risk level promise?** | Only its mechanics (per-symbol cap, volatility target, cash floor), stated as not a loss limit. The dial is 1–10, default 5 (§6.7). |
 | Q5 | **Should the dial choose the strategy?** | No. They stay independent; a level may recommend a strategy but never selects one. |
@@ -416,6 +416,7 @@ questions, folded into the rows they refine.
 | Backtest | Running a strategy on historical prices as if it had been live |
 | Benchmark | What a strategy is compared against; here, buy-and-hold SPY |
 | CAGR | Compound annual growth rate: the steady yearly return that gives the same end result |
+| Data window | The period a backtest actually had price data for, stated on every result, with a notice when it spans neither long bear market |
 | Derived results | What is computed from prices: equity curves, returns, statistics, trades. Distinct from the raw prices themselves |
 | Drawdown | Fall from the previous peak value |
 | End-of-day data | Daily price bars, available after each day's close. What backtests and paper portfolios run on; not real-time data |
@@ -430,5 +431,5 @@ questions, folded into the rows they refine.
 | Survivorship bias | Testing only on things that survived, which flatters results |
 | Look-ahead bias | A backtest using information that wasn't available at the time |
 | Paper trading | Trading with simulated money on real, current market prices (end-of-day prices in Phase 2) |
-| Verdict | The result's headline sentence. "Ahead of SPY" means a higher Sharpe ratio than SPY's over the same period, after costs |
+| Verdict | The result's headline sentence. A strategy is *better risk-adjusted* than SPY when its Sharpe ratio is higher than SPY's over the same dates, after costs; the sentence gives the CAGR difference as context |
 | bps | Basis points; 1 bp = 0.01% |
