@@ -224,8 +224,8 @@ Defined in `supabase/migrations/20261110000000_init.sql`.
 All tables have RLS on with no policies; grants for `anon` and `authenticated` are revoked.
 
 **Migrations workflow:** add a new timestamped file under `supabase/migrations/`, test it
-locally with `supabase db reset`, and merge it with the code that needs it: the release applies it
-to production before that code takes traffic (§8.3). Keep schema changes additive; a data
+locally with `pnpm exec supabase db reset`, and merge it with the code that needs it: the
+release applies it to production before that code takes traffic (§8.3). Keep schema changes additive; a data
 migration that rewrites rows must leave them readable by the previous release
 ([ADR 0002](adr/0002-data-migrations-keep-rows-readable-by-the-previous-release.md)).
 
@@ -246,7 +246,7 @@ migration that rewrites rows must leave them readable by the previous release
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
 | Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
-| Dependencies | Dependabot alerts and security updates are on. `.github/dependabot.yml` opens version updates daily at 05:00 US Eastern for the API (uv), the web app (npm), the API's Docker base image and GitHub Actions, with minor and patch updates grouped per package ecosystem (Docker updates come one at a time). |
+| Dependencies | Dependabot alerts and security updates are on. `.github/dependabot.yml` opens version updates daily at 05:00 US Eastern for the API (uv), the web app (npm), the pinned Supabase CLI (npm, at the root), the API's Docker base image and GitHub Actions, with minor and patch updates grouped per package ecosystem (the Docker image and the Supabase CLI update one version at a time). |
 | Token freshness | Role changes reach the API only after the user's token refreshes (up to about an hour) or they sign in again. Acceptable with a single admin. |
 
 **Gaps:**
@@ -328,7 +328,7 @@ with their `DATABASE_URL`. The runner reads `supabase/migrations/` from the imag
 - applies each migration not yet recorded, in filename order, each in its own transaction, and
   stops at the first failure, exiting non-zero so the deploy does not go ahead;
 - records each one in `supabase_migrations.schema_migrations`, the Supabase CLI's own history
-  table, so `supabase migration list` agrees;
+  table, so `pnpm exec supabase migration list --remote` agrees;
 - logs, and tolerates, migrations the database has recorded but the image lacks (an older image
   against a newer schema).
 
@@ -420,11 +420,11 @@ recognize aren't registered, so a typo isn't synced forever.
 1. Link the project and push the schema:
 
    ```bash
-   supabase link --project-ref <ref>
+   pnpm exec supabase link --project-ref <ref>
    ```
 
    ```bash
-   supabase db push
+   pnpm exec supabase db push --remote
    ```
 
    This first push is the only manual one: from then on each release applies new migrations
@@ -555,7 +555,7 @@ Prices change, so treat these as directional and check each provider's pricing p
 Covered step by step in the [README](../README.md#local-development). Summary:
 
 ```bash
-supabase start
+pnpm install && pnpm exec supabase start   # at the repository root
 ```
 
 ```bash

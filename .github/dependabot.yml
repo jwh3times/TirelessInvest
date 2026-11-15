@@ -57,6 +57,18 @@ updates:
           - minor
           - patch
 
+  # The pinned Supabase CLI: package.json and pnpm-lock.yaml at the root. Each new version,
+  # majors included, arrives as its own pull request, so moving the CLI is a deliberate merge.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+      time: "05:00"
+      timezone: America/New_York
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build(deps)
+
   # The API image's base (api/Dockerfile).
   - package-ecosystem: docker
     directory: /api

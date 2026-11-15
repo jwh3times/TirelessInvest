@@ -1,0 +1,13 @@
+{
+  "name": "tirelessinvest-tools",
+  "private": true,
+  "description": "Repository tooling only: pins the Supabase CLI for the local stack. The web app is in web/.",
+  "devDependencies": {
+    "supabase": "3.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "supabase"
+    ]
+  }
+}

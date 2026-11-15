@@ -97,11 +97,14 @@ Cloudflare Pages (React)  ──JWT──▶  Railway: api (FastAPI)  ──▶ 
 
 ## Local development
 
-Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22 + pnpm, Docker (for the
-local Supabase stack), and the [Supabase CLI](https://supabase.com/docs/guides/cli).
+Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22 + pnpm, and Docker (for
+the local Supabase stack). The [Supabase CLI](https://supabase.com/docs/guides/cli) is pinned in
+the root `package.json`, so install it there and run it through pnpm rather than installing it
+yourself. A new CLI version arrives as a Dependabot pull request.
 
 ```bash
-supabase start          # local Postgres + Auth; applies supabase/migrations
+pnpm install                    # at the repository root: the pinned Supabase CLI
+pnpm exec supabase start        # local Postgres + Auth; applies supabase/migrations
 ```
 
 API:
@@ -113,14 +116,14 @@ uv sync
 uv run uvicorn tirelessinvest.main:app --reload
 ```
 
-If `supabase start` reports a legacy JWT secret, set `SUPABASE_JWT_SECRET` to it in
+If `pnpm exec supabase start` reports a legacy JWT secret, set `SUPABASE_JWT_SECRET` to it in
 `api/.env`. Otherwise the API verifies tokens using the project's published signing keys.
 
 Web:
 
 ```bash
 cd web
-cp .env.example .env    # VITE_SUPABASE_ANON_KEY from `supabase status`
+cp .env.example .env    # VITE_SUPABASE_ANON_KEY from `pnpm exec supabase status`
 pnpm install
 pnpm dev                # http://localhost:5173
 ```
@@ -160,11 +163,11 @@ listed in [AGENTS.md](AGENTS.md).
 2. Push the schema:
 
    ```bash
-   supabase link --project-ref <ref>
+   pnpm exec supabase link --project-ref <ref>
    ```
 
    ```bash
-   supabase db push
+   pnpm exec supabase db push --remote
    ```
 
    This first push is the only manual one: after it, each release applies new migrations.
