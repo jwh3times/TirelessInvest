@@ -255,6 +255,117 @@ def test_data_window_is_the_period_with_data_not_the_period_requested():
     assert window["notice"] is not None
 
 
+HOLDOUT_TURN = pd.Timestamp("2021-12-29")  # 2023-12-29 less a two-year holdout
+
+
+class TurningStore:
+    """AAA climbs 20% a year until HOLDOUT_TURN, then falls 10% a year; SPY climbs 8% a year
+    throughout. Both wiggle ±1% a day so their Sharpe ratios are defined, and each day opens at
+    the previous close, so a buy-and-hold portfolio tracks the close exactly."""
+
+    def __init__(self) -> None:
+        dates = pd.bdate_range("2017-12-01", "2023-12-29")
+        wiggle = 1 + 0.01 * np.where(np.arange(len(dates)) % 2 == 0, 1, -1)
+        after = dates >= HOLDOUT_TURN
+        aaa_growth = np.where(after, 0.90, 1.20) ** (1 / 252)
+        close = pd.DataFrame(
+            {
+                "AAA": 100 * np.cumprod(aaa_growth) * wiggle,
+                "SPY": 100 * np.cumprod(np.full(len(dates), 1.08 ** (1 / 252))) * wiggle,
+            },
+            index=dates,
+        )
+        self.bars = Bars(open=close.shift(1).bfill(), close=close)
+
+    def load(self, symbols, start, end):
+        return self.bars.select(symbols)
+
+
+def turning_request(**kwargs) -> BacktestRequest:
+    return BacktestRequest(
+        strategy="fixed_weights",
+        universe={"symbols": ["AAA"]},
+        start_date=date(2018, 1, 1),
+        end_date=date(2023, 12, 29),
+        rebalance="never",
+        risk_level=10,
+        costs=NO_COSTS,
+        **kwargs,
+    )
+
+
+def test_holdout_splits_one_continuous_run_into_in_sample_and_held_out_sections():
+    store = TurningStore()
+    full = run_backtest(turning_request(), store)
+    report = run_backtest(turning_request(holdout_years=2), store)
+
+    # The full-period report is unchanged by the holdout.
+    for key in ("summary", "benchmark", "verdict", "series", "data_window"):
+        assert report[key] == full[key]
+    assert full["in_sample"] is None and full["holdout"] is None
+
+    in_sample, holdout = report["in_sample"], report["holdout"]
+    assert (in_sample["first_date"], in_sample["last_date"]) == ("2018-01-01", "2021-12-28")
+    assert (holdout["first_date"], holdout["last_date"]) == ("2021-12-29", "2023-12-29")
+
+    # Each section measures its own stretch of the price path: the holdout from the portfolio's
+    # value at the last in-sample close, which is where the one continuous run had got to.
+    aaa, spy = store.bars.close["AAA"], store.bars.close["SPY"]
+    first, last_in, last = "2018-01-01", "2021-12-28", "2023-12-29"
+    assert in_sample["summary"]["total_return"] == pytest.approx(aaa[last_in] / aaa[first] - 1)
+    assert holdout["summary"]["total_return"] == pytest.approx(aaa[last] / aaa[last_in] - 1)
+    assert holdout["summary"]["start_value"] == pytest.approx(in_sample["summary"]["end_value"])
+    assert holdout["summary"]["start_value"] == pytest.approx(10_000 * aaa[last_in] / aaa[first])
+    assert in_sample["benchmark"]["summary"]["total_return"] == pytest.approx(
+        spy[last_in] / spy[first] - 1
+    )
+    assert holdout["benchmark"]["summary"]["total_return"] == pytest.approx(
+        spy[last] / spy[last_in] - 1
+    )
+
+    # A strategy that only shines in-sample: ahead of SPY there, behind it in the holdout.
+    assert in_sample["verdict"]["better_risk_adjusted"] is True
+    assert holdout["verdict"]["better_risk_adjusted"] is False
+    assert holdout["verdict"]["sharpe"] == holdout["summary"]["sharpe"]
+    assert holdout["verdict"]["benchmark_sharpe"] == holdout["benchmark"]["summary"]["sharpe"]
+
+
+def test_holdout_needs_a_year_in_sample_in_the_request():
+    def request(start, end, holdout_years):
+        return BacktestRequest(
+            strategy="momentum",
+            universe={"preset": "multi_asset"},
+            start_date=start,
+            end_date=end,
+            holdout_years=holdout_years,
+        )
+
+    with pytest.raises(ValueError, match="at least one year in-sample"):
+        request(date(2020, 1, 1), date(2022, 6, 30), 2)
+    with pytest.raises(ValueError):
+        request(date(2020, 1, 1), date(2023, 1, 1), 0)
+    # Exactly one year in-sample is enough.
+    assert request(date(2020, 6, 30), date(2023, 6, 30), 2).holdout_years == 2
+
+
+def test_holdout_needs_a_year_in_sample_in_the_data_too():
+    class LateHistoryStore:
+        """Prices that begin on 2021-06-01, so a 2018 start has little real in-sample history."""
+
+        def load(self, symbols, start, end):
+            return synthetic_bars(symbols, max(start, date(2021, 6, 1)), end)
+
+    req = BacktestRequest(
+        strategy="fixed_weights",
+        universe={"symbols": ["SPY"]},
+        start_date=date(2018, 1, 1),
+        end_date=date(2023, 12, 29),
+        holdout_years=2,
+    )
+    with pytest.raises(BacktestError, match="at least one year in-sample"):
+        run_backtest(req, LateHistoryStore())
+
+
 def test_missing_data_is_a_clear_error():
     class EmptyStore:
         def load(self, symbols, start, end):

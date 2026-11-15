@@ -171,6 +171,38 @@ def test_backtest_saved_before_the_data_window_still_shows_one(client, db):
     assert report["data_window"] == POST_2016_WINDOW
 
 
+def test_holdout_backtest_reports_in_sample_and_held_out_sections_with_verdicts(client, db):
+    _, token = make_user(db)
+    body = {**BACKTEST, "holdout_years": 2}
+    created = client.post("/backtests", json=body, headers=auth(token))
+    assert created.status_code == 201, created.text
+    report = created.json()["report"]
+    assert report["config"]["holdout_years"] == 2
+
+    in_sample, holdout = report["in_sample"], report["holdout"]
+    assert (in_sample["first_date"], in_sample["last_date"]) == ("2019-01-01", "2021-12-30")
+    assert (holdout["first_date"], holdout["last_date"]) == ("2021-12-31", "2023-12-29")
+    for section in (in_sample, holdout):
+        summary, benchmark = section["summary"], section["benchmark"]["summary"]
+        assert_well_formed_verdict(section["verdict"], summary, benchmark)
+    # One continuous run: the holdout starts where the in-sample period ended.
+    assert holdout["summary"]["start_value"] == pytest.approx(in_sample["summary"]["end_value"])
+    assert holdout["summary"]["end_value"] == pytest.approx(report["summary"]["end_value"])
+
+    saved = client.get(f"/backtests/{created.json()['id']}", headers=auth(token)).json()
+    assert (saved["report"]["in_sample"], saved["report"]["holdout"]) == (in_sample, holdout)
+
+
+def test_invalid_holdout_is_422(client, db):
+    _, token = make_user(db)
+    too_long = client.post("/backtests", json={**BACKTEST, "holdout_years": 5}, headers=auth(token))
+    assert too_long.status_code == 422
+    assert "at least one year in-sample" in too_long.text
+    zero = client.post("/backtests", json={**BACKTEST, "holdout_years": 0}, headers=auth(token))
+    assert zero.status_code == 422
+    assert client.get("/backtests", headers=auth(token)).json() == []
+
+
 def test_invalid_backtest_is_422(client, db):
     _, token = make_user(db)
     bad = {**BACKTEST, "end_date": "2018-01-01"}

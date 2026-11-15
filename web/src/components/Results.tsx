@@ -1,5 +1,5 @@
 import { money, num, pct, riskAdjustedLabel, signedPct } from "../lib/format";
-import type { DataWindow, Report } from "../lib/types";
+import type { DataWindow, HoldoutSection, Report } from "../lib/types";
 import { DrawdownChart, EquityChart, MonthlyReturns } from "./Charts";
 
 function Tile({ label, value, compare, hint }: {
@@ -54,6 +54,72 @@ function DataWindowLine({ dataWindow: w }: { dataWindow: DataWindow }) {
   );
 }
 
+const SECTION_ROWS: { label: string; key: string; format: (v: number | null) => string }[] = [
+  { label: "Annual return (CAGR)", key: "cagr", format: (v) => pct(v) },
+  { label: "Sharpe ratio", key: "sharpe", format: (v) => num(v) },
+  { label: "Worst drawdown", key: "max_drawdown", format: (v) => pct(v) },
+  { label: "Volatility", key: "volatility", format: (v) => pct(v) },
+];
+
+/** The in-sample and holdout sections side by side, so a strategy that only shines on the period
+ * it was tuned on stands out. */
+function HoldoutComparison({ inSample, holdout, bench }: {
+  inSample: HoldoutSection;
+  holdout: HoldoutSection;
+  bench: string;
+}) {
+  const sections = [
+    { label: "In-sample", section: inSample },
+    { label: "Holdout", section: holdout },
+  ];
+  return (
+    <section className="card">
+      <h3>In-sample against holdout</h3>
+      <p className="hint">
+        One continuous run, split at {holdout.first_date}. The holdout starts from where the
+        portfolio stood, not from a fresh deposit. A strategy that only does well in-sample was
+        probably fitted to that period.
+      </p>
+      <table className="table">
+        <thead>
+          <tr>
+            <th />
+            {sections.map(({ label, section }) => (
+              <th key={label}>
+                {label}{" "}
+                <span className="muted small">
+                  {section.first_date} to {section.last_date}
+                </span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Against {bench}</td>
+            {sections.map(({ label, section }) => (
+              <td key={label}><strong>{riskAdjustedLabel(section.verdict)}</strong></td>
+            ))}
+          </tr>
+          {SECTION_ROWS.map((row) => (
+            <tr key={row.key}>
+              <td>{row.label}</td>
+              {sections.map(({ label, section }) => (
+                <td key={label} className="num">
+                  {row.format(section.summary[row.key])}{" "}
+                  <span className="muted small">
+                    {bench} {row.format(section.benchmark.summary[row.key])}
+                  </span>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 export function Results({ report }: { report: Report }) {
   const s = report.summary;
   const b = report.benchmark.summary;
@@ -91,6 +157,10 @@ export function Results({ report }: { report: Report }) {
         <Tile label="Beta" value={num(s.beta)} compare={`correlation ${num(s.correlation)}`}
           hint={`Sensitivity to ${bench}. 1 = moves with it.`} />
       </div>
+
+      {report.in_sample && report.holdout && (
+        <HoldoutComparison inSample={report.in_sample} holdout={report.holdout} bench={bench} />
+      )}
 
       <EquityChart report={report} />
       <DrawdownChart report={report} />

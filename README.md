@@ -38,6 +38,13 @@ with simply buying and holding an index fund under the same costs.
     the 2000–02 nor the 2008–09 bear market in full (peak to trough, by month), and otherwise
     states the dates tested. Backtests saved before the window existed get it from their stored
     dates.
+  - An optional **holdout**: the last N whole years before the end date, reported beside the
+    in-sample years before them. The simulation still runs once, straight through. Each part gets
+    its own metrics and verdict against the benchmark over its own dates, and the holdout is
+    measured from the portfolio's value at the last in-sample close, not from a fresh deposit. A
+    holdout that leaves under a year in-sample, by the requested dates or by the first date with
+    prices, is refused. There is no parameter optimiser, by design
+    ([PRD non-goals](docs/PRD.md#non-goals)).
 - **Strategies:**
 
   | Strategy | What it does |
@@ -211,8 +218,9 @@ from the GitHub `production` environment, and its Cloudflare token from 1Passwor
   states its data window and says when it has no long bear market.
 - **Survivorship bias.** Any list of stocks picked today is biased toward winners. Prefer ETF
   universes.
-- **Overfitting.** If you tune parameters until the past looks good, you are fitting noise.
-  Pick parameters, then test on a period you didn't tune on.
+- **Overfitting.** If you tune parameters until the past looks good, you are fitting noise, and
+  nothing detects it. Pick parameters, then hold out the last years of the backtest: a strategy
+  that only does well in-sample was probably fitted to that period.
 - **Daily bars only.** Intraday and day trading need minute data. That's Phase 3.
 - **Backtests run synchronously.** The worst case (50 symbols, 30 years, daily rebalancing)
   takes roughly 10–15 seconds. Monthly strategies take under a second. Move to a job queue

@@ -63,6 +63,8 @@ export interface BacktestRequest {
   legacy_risk_level?: number | null;
   costs: { fee_bps: number; slippage_bps: number };
   benchmark: string;
+  /** Report the last N years separately, as a holdout. */
+  holdout_years?: number | null;
 }
 
 export type Metrics = Record<string, number | null>;
@@ -87,12 +89,24 @@ export interface DataWindow {
   notice: string | null;
 }
 
+/** One stretch of a backtest with a holdout, measured over its own dates against the benchmark. */
+export interface HoldoutSection {
+  first_date: string;
+  last_date: string;
+  summary: Metrics;
+  benchmark: { summary: Metrics };
+  verdict: Verdict;
+}
+
 export interface Report {
   config: BacktestRequest & { rebalance: Rebalance; risk: RiskSettings; symbols: string[] };
   summary: Metrics;
   benchmark: { symbol: string; summary: Metrics };
   verdict: Verdict;
   data_window: DataWindow;
+  /** Set when the request held out its last years; absent on reports saved before holdouts. */
+  in_sample?: HoldoutSection | null;
+  holdout?: HoldoutSection | null;
   series: {
     dates: string[];
     equity: number[];
