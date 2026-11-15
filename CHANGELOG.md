@@ -13,6 +13,16 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.2] - 2026-11-15
+
+### Changed
+
+- The product requirements record invite-only sign-in (A1, A5, A8, G5, Q2), self-serve account
+  deletion (A7) and the data-window notice (§6.4) as built, and §6.10 no longer lists public
+  sign-up or missing account deletion as limitations.
+- The PRD glossary defines the data window, and its Verdict row uses the app's "better
+  risk-adjusted" wording instead of "ahead of SPY".
+
 ## [0.7.1] - 2026-11-14
 
 ### Changed
