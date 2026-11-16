@@ -13,6 +13,15 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.7] - 2026-11-15
+
+### Fixed
+
+- A backtest whose strategy parameters fail their checks now gets one readable message per
+  parameter, such as "params.top_n: Input should be greater than or equal to 1". It used to get
+  Pydantic's whole multi-line error, with its type tags, the input and a docs link. The API's 422
+  for these has the same shape as every other request error.
+
 ## [0.7.6] - 2026-11-15
 
 ### Changed
