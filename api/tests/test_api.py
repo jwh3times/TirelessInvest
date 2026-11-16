@@ -203,6 +203,15 @@ def test_invalid_holdout_is_422(client, db):
     assert client.get("/backtests", headers=auth(token)).json() == []
 
 
+def test_request_level_422_messages_read_without_pydantics_prefix(client, db):
+    # The Lab shows each 422 item's `msg` as it comes; Pydantic prefixes a raised ValueError.
+    _, token = make_user(db)
+    r = client.post("/backtests", json={**BACKTEST, "holdout_years": 5}, headers=auth(token))
+    assert r.status_code == 422
+    [item] = r.json()["detail"]
+    assert item["msg"].startswith("a 5-year holdout needs at least one year in-sample"), item
+
+
 def test_invalid_backtest_is_422(client, db):
     _, token = make_user(db)
     bad = {**BACKTEST, "end_date": "2018-01-01"}
