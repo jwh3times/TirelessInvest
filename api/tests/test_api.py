@@ -212,6 +212,26 @@ def test_request_level_422_messages_read_without_pydantics_prefix(client, db):
     assert item["msg"].startswith("a 5-year holdout needs at least one year in-sample"), item
 
 
+def test_strategy_param_422s_name_each_param_and_read_as_written(client, db):
+    _, token = make_user(db)
+    r = client.post("/backtests", json={**BACKTEST, "params": {"top_n": 0}}, headers=auth(token))
+    assert r.status_code == 422
+    assert isinstance(r.json()["detail"], list), r.json()["detail"]
+    [item] = r.json()["detail"]
+    assert (item["loc"], item["msg"]) == (
+        ["body", "params", "top_n"],
+        "Input should be greater than or equal to 1",
+    )
+    weights = {**BACKTEST, "strategy": "fixed_weights", "params": {"weights": {"SPY": 2}}}
+    r = client.post("/backtests", json=weights, headers=auth(token))
+    assert r.status_code == 422
+    [item] = r.json()["detail"]
+    assert (item["loc"], item["msg"]) == (
+        ["body", "params", "weights"],
+        "weights must sum to at most 1",
+    )
+
+
 def test_invalid_backtest_is_422(client, db):
     _, token = make_user(db)
     bad = {**BACKTEST, "end_date": "2018-01-01"}
