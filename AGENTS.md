@@ -11,6 +11,7 @@ product requirements and the hosting runbook.
 cd api && uv sync && uv run pytest       # API and engine tests
 cd api && uv run ruff check . && uv run ruff format --check .   # API lint and format
 cd web && pnpm install && pnpm build     # web build
+pnpm install && pnpm exec supabase start # local Supabase, with the CLI pinned in package.json
 node scripts/sync-agents.mjs --check     # agent config is in sync
 node scripts/check-skills.mjs            # installed skills match skills-lock.json
 node scripts/lint-agent-neutrality.mjs   # skill and agent sources read correctly from both trees
@@ -76,8 +77,8 @@ when Claude Code asks and sign in from `/mcp`; in Codex, trust the project, then
   open-ended `railway-agent`, prompts first. Claude Code lists them by name in
   `.claude/settings.json`, so a tool Railway adds goes on that list; Codex prompts for any tool not
   marked read-only and names those three in `.codex/config.toml`.
-- **`supabase-local`**: the local `supabase start` stack, so it answers only while that runs. Schema
-  changes go in `supabase/migrations/`.
+- **`supabase-local`**: the local `pnpm exec supabase start` stack, so it answers only while that
+  runs. Schema changes go in `supabase/migrations/`.
 
 Left out on purpose:
 
