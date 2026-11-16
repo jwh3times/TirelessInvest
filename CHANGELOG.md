@@ -13,6 +13,20 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.6] - 2026-11-15
+
+### Changed
+
+- Dependency updates rolled up from v0.7.4 and v0.7.5: Vite 8.3.8 in the web app, and FastAPI
+  0.162.5 and Ruff 0.17.5 in the API.
+
+### Fixed
+
+- The Lab's backtest errors no longer start with "Value error, ". The checks that look at several
+  fields together (a holdout that leaves less than a year in-sample, an end date before the start,
+  a range over 30 years, a custom universe outside 1 to 50 symbols) now read as written, and so do
+  the API's 422 responses for every request body.
+
 ## [0.7.3] - 2026-11-15
 
 ### Changed
