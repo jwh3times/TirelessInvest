@@ -6,8 +6,9 @@ from functools import lru_cache
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.exceptions import RequestValidationError
 from psycopg.types.json import Jsonb
-from pydantic import Field
+from pydantic import Field, ValidationError
 
 from ..access import flags_for, permissions_for, require_permission
 from ..auth import CurrentUser, current_user
@@ -59,6 +60,15 @@ def create_backtest(
         user
     ):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "custom symbol lists need permission")
+    # `params` is a plain dict in the request model, so check it against the strategy's own model
+    # here: a failure is then a 422 at `body.params.<name>`, like any other field.
+    try:
+        strategy_cls.params_model.model_validate(body.params)
+    except ValidationError as exc:
+        errors = exc.errors(include_url=False)
+        raise RequestValidationError(
+            [{**e, "loc": ("body", "params", *e["loc"])} for e in errors]
+        ) from exc
 
     request = BacktestRequest.model_validate(body.model_dump(exclude={"name"}))
     started = time.perf_counter()
