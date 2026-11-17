@@ -16,6 +16,7 @@ node scripts/sync-agents.mjs --check     # agent config is in sync
 node scripts/check-skills.mjs            # installed skills match skills-lock.json
 node scripts/lint-agent-neutrality.mjs   # skill and agent sources read correctly from both trees
 node scripts/check-docs.mjs              # doc links resolve and docs/agents/docs.md maps every doc
+node scripts/check-python-version.mjs    # api/.python-version matches the Dockerfile's Python
 node scripts/next-version.mjs            # the version the next merge to main will mint
 node scripts/check-changelog.mjs         # CHANGELOG.md has a section for that version
 node --test "scripts/*.test.mjs"         # tests for the scripts above

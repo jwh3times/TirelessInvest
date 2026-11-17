@@ -97,10 +97,12 @@ Cloudflare Pages (React)  ──JWT──▶  Railway: api (FastAPI)  ──▶ 
 
 ## Local development
 
-Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22 + pnpm, and Docker (for
-the local Supabase stack). The [Supabase CLI](https://supabase.com/docs/guides/cli) is pinned in
-the root `package.json`, so install it there and run it through pnpm rather than installing it
-yourself. A new CLI version arrives as a Dependabot pull request.
+Prerequisites: [uv](https://docs.astral.sh/uv/), Node 22 + pnpm, and Docker (for the local
+Supabase stack). uv runs the API on the Python that `api/.python-version` pins, the one the
+production image runs, and installs it if it is missing. The
+[Supabase CLI](https://supabase.com/docs/guides/cli) is pinned in the root `package.json`, so
+install it there and run it through pnpm rather than installing it yourself. A new CLI version
+arrives as a Dependabot pull request.
 
 ```bash
 pnpm install                    # at the repository root: the pinned Supabase CLI
@@ -152,8 +154,8 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres uv run
 
 The second form also runs API + database integration tests. It creates and drops a scratch
 database on whatever server you point it at. CI runs both suites, the frontend build, a check that
-`CHANGELOG.md` names the version a pull request will mint, and the agent-config and docs checks
-listed in [AGENTS.md](AGENTS.md).
+`CHANGELOG.md` names the version a pull request will mint, and the agent-config, docs and API
+Python checks listed in [AGENTS.md](AGENTS.md).
 
 ## Deploying
 
