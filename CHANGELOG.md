@@ -13,6 +13,16 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.9] - 2026-11-17
+
+### Changed
+
+- The API's tests run Starlette's test client on `httpx2`, a new development-only dependency, so
+  they no longer print Starlette's warning to install it. The pytest config makes any
+  `StarletteDeprecationWarning` an error: if `httpx2` is ever dropped, or Starlette deprecates
+  something else the tests use, the integration tests fail instead of warning. The production
+  image is unchanged, and the Alpaca client still uses `httpx`.
+
 ## [0.7.8] - 2026-11-16
 
 ### Changed

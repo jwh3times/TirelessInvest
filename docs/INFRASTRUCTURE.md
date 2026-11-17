@@ -286,7 +286,10 @@ blocks force-pushes and deletion of `main`.
 
 The integration tests run against plain Postgres, using `api/tests/supabase_stub.sql` to stand
 in for the parts of Supabase the migrations need (`auth.users`, the `anon` and `authenticated`
-roles). They apply the migrations with the same runner production uses (§8.3).
+roles). They apply the migrations with the same runner production uses (§8.3). Their test client
+is Starlette's, running on the `httpx2` dev dependency. The pytest config in `api/pyproject.toml`
+makes any `StarletteDeprecationWarning` an error, so a fallback to `httpx`, or any other Starlette
+deprecation the tests reach, fails the integration tests instead of warning.
 
 ### 8.2 Releases and deployments
 
