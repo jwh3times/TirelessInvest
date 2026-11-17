@@ -6,11 +6,12 @@
   development, tests, deploying, known limitations and the roadmap; for developers and evaluators.
   Update when a strategy, universe, metric or engine rule changes (`api/src/tirelessinvest/engine/`),
   when routes or jobs change (`api/src/tirelessinvest/routes/`, `jobs/`), when the root
-  `package.json` (the pinned Supabase CLI) changes, or when a setup, test or deploy command changes.
+  `package.json` (the pinned Supabase CLI) or `api/.python-version` changes, or when a setup, test
+  or deploy command changes.
 - `docs/INFRASTRUCTURE.md`: hosting, DNS, configuration, security, the deployment runbook and
-  operations. Update when `api/Dockerfile`, `.dockerignore`, `supabase/`, `.github/workflows/`,
-  `.github/dependabot.yml` or an environment variable changes, or a GitHub repository setting does (the `main` ruleset,
-  CodeQL setup, merge options).
+  operations. Update when `api/Dockerfile`, `api/.python-version`, `.dockerignore`, `supabase/`,
+  `.github/workflows/`, `.github/dependabot.yml` or an environment variable changes, or a GitHub
+  repository setting does (the `main` ruleset, CodeQL setup, merge options).
 - `CHANGELOG.md`: one dated section per version a merge mints, checked by the `changelog` CI job
   (`docs/agents/releases.md`). `ship-owned`, like the `VERSION` file.
 - `GLOSSARY.md`: the project's own vocabulary, one term per entry with the words to avoid. Update

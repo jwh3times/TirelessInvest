@@ -99,9 +99,10 @@ Cloudflare Pages (React)  ──JWT──▶  Railway: api (FastAPI)  ──▶ 
 
 Prerequisites: [uv](https://docs.astral.sh/uv/), Node 22 + pnpm, and Docker (for the local
 Supabase stack). uv runs the API on the Python that `api/.python-version` pins, the one the
-production image runs, and installs it if it is missing. The [Supabase CLI](https://supabase.com/docs/guides/cli) is pinned in
-the root `package.json`, so install it there and run it through pnpm rather than installing it
-yourself. A new CLI version arrives as a Dependabot pull request.
+production image runs, and installs it if it is missing. The
+[Supabase CLI](https://supabase.com/docs/guides/cli) is pinned in the root `package.json`, so
+install it there and run it through pnpm rather than installing it yourself. A new CLI version
+arrives as a Dependabot pull request.
 
 ```bash
 pnpm install                    # at the repository root: the pinned Supabase CLI

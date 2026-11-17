@@ -38,6 +38,13 @@ test("tolerates a patch version, a digest, other suffixes, flags and a registry 
   }
 });
 
+test("a multi-stage Dockerfile is read at its last python stage, the one that runs", () => {
+  assert.equal(
+    dockerfilePython("FROM python:3.14 AS build\nRUN make\nFROM python:3.15-slim\nCOPY --from=build /a /a\n"),
+    "3.15",
+  );
+});
+
 test("finds no version without a python base image", () => {
   assert.equal(dockerfilePython("FROM debian:12\n"), null);
   assert.equal(dockerfilePython("# FROM python:3.15-slim\n"), null);
@@ -81,16 +88,46 @@ test("a missing file is a problem naming it, and no mismatch is reported", () =>
   assert.deepEqual(problemsIn({ "api/.python-version": "3.15\n" }), ["api/Dockerfile is missing"]);
 });
 
-test("a file with no version is a problem naming it and saying what was expected", () => {
+test("a file with no version is a problem naming it, what was expected and what was found", () => {
   assert.deepEqual(
-    problemsIn({ "api/Dockerfile": "FROM debian:12\n", "api/.python-version": "\n" }),
+    problemsIn({ "api/Dockerfile": "FROM debian:12\n", "api/.python-version": "pypy3\n" }),
     [
-      "api/Dockerfile has no `FROM python:<major>.<minor>…` line",
-      "api/.python-version has no `<major>.<minor>` version",
+      "api/Dockerfile has no `FROM python:<major>.<minor>…` line; its last FROM is `FROM debian:12`",
+      "api/.python-version has no `<major>.<minor>` version; it requests `pypy3`",
+    ],
+  );
+  assert.deepEqual(
+    problemsIn({ "api/Dockerfile": "RUN true\n", "api/.python-version": "# no pin\n\n" }),
+    [
+      "api/Dockerfile has no `FROM python:<major>.<minor>…` line; it has no FROM line",
+      "api/.python-version has no `<major>.<minor>` version; it is empty",
     ],
   );
 });
 
+// main() with its console output captured, so the test run stays quiet.
+function quietMain(argv) {
+  const { log, error } = console;
+  const output = [];
+  console.log = console.error = (line) => output.push(line);
+  try {
+    return { code: main(argv), output };
+  } finally {
+    Object.assign(console, { log, error });
+  }
+}
+
+test("main exits 1 listing the problems for a checkout whose image and pin differ", () => {
+  withRepository(
+    { "api/Dockerfile": "FROM python:3.16-slim\n", "api/.python-version": "3.15\n" },
+    (root) => {
+      const { code, output } = quietMain([root]);
+      assert.equal(code, 1);
+      assert.equal(output[0], "API Python mismatch: api/Dockerfile runs 3.16, api/.python-version pins 3.15");
+    },
+  );
+});
+
 test("this repository's image and pin agree", () => {
-  assert.equal(main(), 0);
+  assert.equal(quietMain([]).code, 0);
 });

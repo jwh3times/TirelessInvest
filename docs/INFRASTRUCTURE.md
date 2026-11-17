@@ -264,8 +264,8 @@ See §11.
 Runs on every push to `main` and on every pull request:
 
 - **api job:** `uv sync --frozen` → `ruff check` → `ruff format --check` → `pytest`, with a
-  Postgres 17 service container, on the Python that `api/.python-version` pins. That covers 34 tests: engine, Alpaca client, API/database
-  integration and the migration runner.
+  Postgres 17 service container, on the Python that `api/.python-version` pins. That covers 34
+  tests: engine, Alpaca client, API/database integration and the migration runner.
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
 - **changelog job:** on pull requests, `node scripts/check-changelog.mjs` checks that
   `CHANGELOG.md` has a section for the version the merge will mint (`docs/agents/releases.md`).
