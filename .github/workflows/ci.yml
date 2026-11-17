@@ -28,10 +28,9 @@ jobs:
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v7
+      # No python-version input: it would set UV_PYTHON, which overrides api/.python-version.
+      # uv reads that file here and locally, and the agents job checks it matches the Dockerfile.
       - uses: astral-sh/setup-uv@v7
-        with:
-          # Match the FROM line in api/Dockerfile, which is what production runs.
-          python-version: "3.15"
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -109,6 +108,11 @@ jobs:
       # Local links and anchors resolve, and the doc map lists every document.
       - name: Docs links and doc map
         run: node scripts/check-docs.mjs
+
+      # api/.python-version, which CI's api job and local uv use, names the Python the API image
+      # runs in production, so a Dockerfile-only base-image bump fails here.
+      - name: API Python matches the Dockerfile
+        run: node scripts/check-python-version.mjs
 
       - name: Script tests
         run: node --test "scripts/*.test.mjs"

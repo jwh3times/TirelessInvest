@@ -8,6 +8,8 @@
   `shared-skills` block of `AGENTS.md`.
 - Repo root: `node scripts/lint-agent-neutrality.mjs`.
 - Repo root: `node scripts/check-docs.mjs`.
+- Repo root: `node scripts/check-python-version.mjs`, fixed by making `api/.python-version` name
+  the Python of the `api/Dockerfile` base image.
 - Repo root: `node --test "scripts/*.test.mjs"`, only when `scripts/` changed.
 - `api/`: `uv run ruff check .`, only when `api/` changed.
 - `api/`: `uv run ruff format --check .`, only when `api/` changed, fixed by `uv run ruff format .`.

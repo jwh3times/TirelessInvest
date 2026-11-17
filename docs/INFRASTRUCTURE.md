@@ -264,7 +264,7 @@ See §11.
 Runs on every push to `main` and on every pull request:
 
 - **api job:** `uv sync --frozen` → `ruff check` → `ruff format --check` → `pytest`, with a
-  Postgres 17 service container. That covers 34 tests: engine, Alpaca client, API/database
+  Postgres 17 service container, on the Python that `api/.python-version` pins. That covers 34 tests: engine, Alpaca client, API/database
   integration and the migration runner.
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
 - **changelog job:** on pull requests, `node scripts/check-changelog.mjs` checks that
@@ -272,10 +272,12 @@ Runs on every push to `main` and on every pull request:
   Dependabot's pull requests pass without one; their changes roll up into the next section. On a
   push to `main` it passes without checking.
 - **agents job:** `sync-agents.mjs --check` → `check-skills.mjs` → `lint-agent-neutrality.mjs` →
-  `check-docs.mjs` → the script tests, all on Node 22 with nothing installed. It fails when the
-  agent config mirror is stale, an installed skill differs from `skills-lock.json`, a skill or
-  agent source is not tool-neutral, a doc link or the `Doc map` in `docs/agents/docs.md` is out
-  of date, or a script test fails.
+  `check-docs.mjs` → `check-python-version.mjs` → the script tests, all on Node 22 with nothing
+  installed. It fails when the agent config mirror is stale, an installed skill differs from
+  `skills-lock.json`, a skill or agent source is not tool-neutral, a doc link or the `Doc map` in
+  `docs/agents/docs.md` is out of date, `api/.python-version` and the `api/Dockerfile` base image
+  name different Python minors, or a script test fails. Dependabot bumps only the base image, so
+  its Python bump stays red here until the pin moves with it.
 
 The `Main branch rules` ruleset makes all four jobs required checks on `main`, with the branch up
 to date before merge. It also requires a pull request (merge commits only, review threads
@@ -354,7 +356,8 @@ Cloudflare Pages' own rollback buttons are an emergency stop only, followed by a
 - Built from the repository root, so the image can carry `supabase/migrations/`. The root
   `.dockerignore` admits only `api/pyproject.toml`, `api/uv.lock`, `api/src` and
   `supabase/migrations`.
-- `python:3.15-slim` plus a pinned `uv` 0.11.32.
+- `python:3.15-slim` plus a pinned `uv` 0.11.32. `api/.python-version` pins the same minor for CI
+  and local development, and CI's `agents` job fails when they differ (§8.1).
 - Dependencies install in their own layer from `uv.lock` (`--frozen --no-dev`).
 - The migrations sit at `/app/supabase/migrations`, named by `MIGRATIONS_DIR`.
 - Default command: `uvicorn tirelessinvest.main:app --host 0.0.0.0 --port ${PORT:-8000}`.
