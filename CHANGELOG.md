@@ -13,6 +13,16 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.8] - 2026-11-16
+
+### Changed
+
+- The API's Python version is pinned once, in `api/.python-version`, which CI and local `uv` both
+  read. CI fails when the pin and the `api/Dockerfile` base image production runs name different
+  Python versions, so a Dependabot bump of the base image stays red until the pin moves with it,
+  instead of CI passing on a Python production no longer runs. Locally, `uv sync` in `api/` now
+  builds the environment on Python 3.15, and installs it if it is missing.
+
 ## [0.7.7] - 2026-11-15
 
 ### Fixed

@@ -154,8 +154,8 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres uv run
 
 The second form also runs API + database integration tests. It creates and drops a scratch
 database on whatever server you point it at. CI runs both suites, the frontend build, a check that
-`CHANGELOG.md` names the version a pull request will mint, and the agent-config and docs checks
-listed in [AGENTS.md](AGENTS.md).
+`CHANGELOG.md` names the version a pull request will mint, and the agent-config, docs and API
+Python checks listed in [AGENTS.md](AGENTS.md).
 
 ## Deploying
 
