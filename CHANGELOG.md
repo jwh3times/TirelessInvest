@@ -13,6 +13,18 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.12] - 2026-11-18
+
+### Changed
+
+- Claude Code no longer asks permission for the read-only commands agents run most in this
+  repository: the check scripts and their tests, the API's lint and format checks, the full API
+  test run, GitHub board, label and CI-run reads, the local Supabase status, the `context7` docs
+  tools, and the Railway reads that return no secrets (service config, service and project lists,
+  logs, docs). The allow list in `.claude/settings.json` was built from how often these were called
+  in recent sessions. Every Railway tool that changes production or returns a secret still prompts,
+  and `AGENTS.md` now says which of the two lists a new Railway tool belongs on.
+
 ## [0.7.11] - 2026-11-18
 
 ### Changed
