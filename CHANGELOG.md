@@ -17,9 +17,10 @@ No unreleased changes.
 
 ### Fixed
 
-- `CHANGELOG.md` is valid UTF-8 again. The 0.1.0 entry's footer example held a Windows-1252 middle
-  dot, which showed as a replacement character and made UTF-8 editors and tools refuse the file;
-  it is now the `·` the footer actually prints.
+- `CHANGELOG.md` is valid UTF-8. Since 0.1.0 its footer example had held a Latin-1 middle dot,
+  which showed as a replacement character and made UTF-8 editors and tools refuse the file; it is
+  now the `·` the footer actually prints. `docs/agents/merging.md` no longer tells agents to keep
+  that byte.
 
 ## [0.7.11] - 2026-11-18
 
