@@ -14,8 +14,9 @@ and `ship.md`; this file holds the steps around a merge and what has gone wrong.
   merge on any new alert (errors and warnings, or medium security severity and up), and neither
   `gh pr view` nor GraphQL says why. Query the PR's head ref, not its merge ref:
   `gh api "repos/jwh3times/TirelessInvest/code-scanning/alerts?ref=refs/pull/<N>/head&state=open"`,
-  and read the `CodeQL` check run's summary ("1 new alert…"). A new workflow job needs an explicit
-  `permissions:` block, or it raises `actions/missing-workflow-permissions`.
+  and read the `CodeQL` check run's summary ("1 new alert…"). A job with no `permissions:` of its
+  own, in a workflow with no top-level block, raises `actions/missing-workflow-permissions`; both
+  workflows set one, so a new workflow needs it too.
 
 ## Merging several PRs
 
