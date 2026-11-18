@@ -22,6 +22,10 @@ node scripts/check-changelog.mjs         # CHANGELOG.md has a section for that v
 node --test "scripts/*.test.mjs"         # tests for the scripts above
 ```
 
+Before running these on a development machine, read
+[docs/agents/local-runs.md](docs/agents/local-runs.md); once a PR is open,
+[docs/agents/merging.md](docs/agents/merging.md).
+
 ## Development flow
 
 <!-- shared:development-flow -->
