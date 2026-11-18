@@ -1,5 +1,33 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(gh project item-list *)",
+      "Bash(node scripts/check-docs.mjs)",
+      "Bash(node scripts/sync-agents.mjs --check)",
+      "Bash(node scripts/check-skills.mjs)",
+      "Bash(uv run ruff check .)",
+      "Bash(node scripts/lint-agent-neutrality.mjs)",
+      "Bash(uv run ruff format --check .)",
+      "Bash(gh project view *)",
+      "Bash(gh project field-list *)",
+      "Bash(uv run pytest -q)",
+      "Bash(uv run pytest)",
+      "Bash(node scripts/check-changelog.mjs)",
+      "Bash(node scripts/next-version.mjs)",
+      "Bash(node --test \"scripts/*.test.mjs\")",
+      "Bash(node scripts/check-python-version.mjs)",
+      "Bash(pnpm exec supabase status)",
+      "Bash(gh label list *)",
+      "Bash(gh run watch *)",
+      "Bash(cygpath *)",
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id",
+      "mcp__railway__get-service-config",
+      "mcp__railway__list-services",
+      "mcp__railway__list-projects",
+      "mcp__railway__get-logs",
+      "mcp__railway__fetch-docs"
+    ],
     "ask": [
       "mcp__railway__accept-deploy",
       "mcp__railway__connect-service-source",

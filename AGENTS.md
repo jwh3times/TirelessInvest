@@ -79,9 +79,11 @@ when Claude Code asks and sign in from `/mcp`; in Codex, trust the project, then
   and Railway's own feature flags (not the app's, which live in Postgres). Use its read tools; make
   a change only when the user asks for that change. Both harnesses enforce this: every mutating
   tool, plus `list-variables` and `get-bucket-credentials` (they return production secrets) and the
-  open-ended `railway-agent`, prompts first. Claude Code lists them by name in
-  `.claude/settings.json`, so a tool Railway adds goes on that list; Codex prompts for any tool not
-  marked read-only and names those three in `.codex/config.toml`.
+  open-ended `railway-agent`, prompts first. Claude Code lists them by name in the `ask` list of
+  `.claude/settings.json`, so a tool Railway adds goes on that list; its `allow` list skips the
+  prompt only for reads that return no secrets, as it does for the read-only checks in
+  [Commands](#commands). Codex prompts for any tool not marked read-only and names those three in
+  `.codex/config.toml`.
 - **`supabase-local`**: the local `pnpm exec supabase start` stack, so it answers only while that
   runs. Schema changes go in `supabase/migrations/`.
 
