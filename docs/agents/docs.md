@@ -27,6 +27,9 @@
 - `CLAUDE.md`: imports `AGENTS.md` for Claude Code. `owner-only`.
 - `docs/agents/*.md`: settings the shared skills read. Update when this repository's process
   changes, or the `main` ruleset's required checks do (`ship.md` lists them).
+- `docs/agents/merging.md`, `docs/agents/local-runs.md`: from open PR to deployed release, and the
+  development machine's traps. Update when a merge or local-run lesson is learned that no check
+  enforces, or a command they quote changes.
 - `.agents/skills/**`: installed skills, listed in `skills-lock.json`. `frozen`: a reinstall
   overwrites them, and `scripts/check-skills.mjs` fails on an edited copy.
 

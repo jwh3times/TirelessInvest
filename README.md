@@ -119,7 +119,9 @@ uv run uvicorn tirelessinvest.main:app --reload
 ```
 
 If `pnpm exec supabase start` reports a legacy JWT secret, set `SUPABASE_JWT_SECRET` to it in
-`api/.env`. Otherwise the API verifies tokens using the project's published signing keys.
+`api/.env`. Otherwise the API verifies tokens using the project's published signing keys. The
+`JWT_SECRET` the pinned CLI prints is not that case: see
+[docs/agents/local-runs.md](docs/agents/local-runs.md#running-against-the-local-stack).
 
 Web:
 

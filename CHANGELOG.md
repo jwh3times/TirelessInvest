@@ -13,6 +13,17 @@ changes raise the minor version.
 
 No unreleased changes.
 
+## [0.7.11] - 2026-11-18
+
+### Changed
+
+- Dependency updates rolled up from v0.7.10: FastAPI 0.162.7 and pydantic-settings 2.16.3 in the
+  API.
+- What coding agents have learned about merging pull requests and running the stack on a
+  development machine now lives in the repository, in `docs/agents/merging.md` and
+  `docs/agents/local-runs.md`, linked from `AGENTS.md`. It used to sit in one machine's private
+  agent memory, where other agents and machines could not read it.
+
 ## [0.7.9] - 2026-11-17
 
 ### Changed
