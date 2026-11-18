@@ -39,9 +39,9 @@ deploy ([ADR 0001](../adr/0001-railway-applies-migrations-at-deploy.md)).
 
 ## Editing `CHANGELOG.md`
 
-The file isn't valid UTF-8 on purpose: the 0.1.0 footer example (`v0.1.0 · <short commit>`) is a
-single Latin-1 byte, `0xB7`, which an earlier UTF-8 rewrite broke. Some editors refuse the file, and
-a rewrite as UTF-8 breaks the byte again. Insert a section with a byte-level edit that keeps that
-byte, then check that `git diff -U0 CHANGELOG.md` shows no removed lines and run
-`node scripts/check-changelog.mjs`. On a Windows checkout the working copy has CRLF endings, so a
-byte-level anchor must use `\r\n`.
+The file is UTF-8. Until 0.7.12 the 0.1.0 footer example held a lone Latin-1 middle dot (`0xB7`),
+so UTF-8 editors and tools refused the file, and one rewrite turned it into a replacement
+character. If a tool refuses the file again, a non-UTF-8 byte has come back: find it with
+`grep -naxv '.*' CHANGELOG.md` and fix that byte, instead of editing around it. After adding a
+section, check that `git diff -U0 CHANGELOG.md` shows no removed lines, and run
+`node scripts/check-changelog.mjs`.

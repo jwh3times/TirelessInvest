@@ -13,7 +13,7 @@ changes raise the minor version.
 
 No unreleased changes.
 
-## [0.7.12] - 2026-11-18
+## [0.7.13] - 2026-11-18
 
 ### Changed
 
@@ -24,6 +24,15 @@ No unreleased changes.
   logs, docs). The allow list in `.claude/settings.json` was built from how often these were called
   in recent sessions. Every Railway tool that changes production or returns a secret still prompts,
   and `AGENTS.md` now says which of the two lists a new Railway tool belongs on.
+
+## [0.7.12] - 2026-11-18
+
+### Fixed
+
+- `CHANGELOG.md` is valid UTF-8. Since 0.1.0 its footer example had held a Latin-1 middle dot,
+  which showed as a replacement character and made UTF-8 editors and tools refuse the file; it is
+  now the `·` the footer actually prints. `docs/agents/merging.md` no longer tells agents to keep
+  that byte.
 
 ## [0.7.11] - 2026-11-18
 
@@ -271,7 +280,7 @@ feature flags and an audit log, and the nightly price sync.
 - Every merge to `main` is a release. It is tagged `v<major>.<minor>.<build>` and reaches production
   without a manual step: Railway applies pending database migrations before the new API takes
   traffic, and the web app is deployed only once the API reports the new release.
-- The web app's footer shows the release it belongs to, as `v0.1.0 � <short commit>`.
+- The web app's footer shows the release it belongs to, as `v0.1.0 · <short commit>`.
 - `GET /health` reports the commit the API is running, as `commit`.
 - This changelog, with one section per release, checked on every pull request.
 
