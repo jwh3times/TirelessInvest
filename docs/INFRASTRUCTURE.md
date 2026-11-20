@@ -60,7 +60,7 @@ goes to production in a fixed order, migrations, then the API, then the web app 
 | Market data | Alpaca Market Data API | `api/src/tirelessinvest/market/` | Daily bars, split/dividend-adjusted. |
 | DNS / TLS / CDN | Cloudflare | – | DNS for `tirelessinvest.com`; serves Pages; proxies the API. |
 | Source + CI | GitHub + GitHub Actions | `.github/workflows/ci.yml` | Lint, tests against a real Postgres, frontend build, changelog, agent-config and docs checks. |
-| Releases | GitHub Actions | `.github/workflows/release.yml` | Tags every merge to `main` with its version, then deploys the web app after the API (§8.2). |
+| Releases | GitHub Actions | `.github/workflows/release.yml` | Stamps every merge to `main` into `CHANGELOG.md` and tags it with its version, then deploys the web app after the API (§8.2). |
 
 ## 3. Decision record
 
@@ -191,9 +191,9 @@ with that prefix is shipped to every visitor's browser.
 
 ### 5.3 Release workflow (GitHub `production` environment)
 
-The `web` job of `.github/workflows/release.yml` runs in the GitHub environment `production`, whose
-deployment branches are limited to `main`, so pull request and Dependabot workflows can't read its
-secret.
+The `tag` and `web` jobs of `.github/workflows/release.yml` run in the GitHub environment
+`production`, whose deployment branches are limited to `main`, so pull request, Dependabot and
+other branches' workflows can't read its secrets.
 
 | Name | Kind | Notes |
 |---|---|---|
@@ -204,6 +204,16 @@ The job loads the Cloudflare credentials from 1Password at run time, from the it
 `Cloudflare Pages deploy` in that vault: `credential` becomes `CLOUDFLARE_API_TOKEN` (an API token
 with Cloudflare Pages edit permission) and `account id` becomes `CLOUDFLARE_ACCOUNT_ID`. No
 Cloudflare credential is stored in GitHub.
+
+The `tag` job pushes the changelog stamp commit to `main` as the release GitHub App, which is
+installed on the repository with Contents write and is the `main` ruleset's one bypass actor
+([ADR 0003](adr/0003-stamp-changelog-on-tag.md)). Its key can mint a token that bypasses that
+ruleset, so it is an environment secret, never a repository one:
+
+| Name | Kind | Notes |
+|---|---|---|
+| `RELEASE_APP_CLIENT_ID` | Environment variable | The release App's client ID |
+| `RELEASE_APP_PRIVATE_KEY` | Environment secret | The release App's private key |
 
 ## 6. Data model
 
@@ -243,6 +253,7 @@ additive; a data migration that rewrites rows must leave them readable by the pr
 | Deleting an account | `DELETE /me` deletes only the caller, after the email they typed matches the one in `auth.users`. It refuses the admin, read from the database rather than the token. One transaction anonymises the user's admin audit entries and deletes the `auth.users` row, which cascades to their backtests, permissions, flag overrides and Supabase sessions. |
 | Secrets | Railway variables (Alpaca keys, DB URL). The owner keeps the production values in a password manager, never in `.env` files. Nothing secret in the repo or the web bundle. The database credential stays in Railway: migrations run there, not in CI ([ADR 0001](adr/0001-railway-applies-migrations-at-deploy.md)). The release workflow's Cloudflare token comes from 1Password, through a secret only the `main`-only `production` environment can read (§5.3). |
 | Release tags | A tag ruleset on `v*` blocks updating or deleting a version tag once the release workflow has pushed it. |
+| Pushes to `main` | The `main` ruleset requires a pull request and its checks. Its one bypass actor is the release GitHub App, whose token only the release workflow's `tag` job uses, to push the changelog stamp commit and tags. The App's key is a secret of the `main`-only `production` environment, so no other branch's workflow can mint that token (§5.3, [ADR 0003](adr/0003-stamp-changelog-on-tag.md)). |
 | CORS | Only `CORS_ORIGINS` may call the API from a browser. |
 | Container | Runs as a non-root user (uid 10001). |
 | Code scanning | CodeQL (GitHub's default setup) scans pull requests and runs weekly; `main` accepts no merge with a CodeQL error or warning, or a medium-or-higher security alert (§8.1). |
@@ -261,16 +272,17 @@ See §11.
 
 ### 8.1 Continuous integration (`.github/workflows/ci.yml`)
 
-Runs on every push to `main` and on every pull request:
+Runs on every push to `main` and on every pull request, except the release workflow's stamp
+commit, whose `[skip ci]` skips it (§8.2):
 
 - **api job:** `uv sync --frozen` → `ruff check` → `ruff format --check` → `pytest`, with a
   Postgres 17 service container, on the Python that `api/.python-version` pins. That covers 34
   tests: engine, Alpaca client, API/database integration and the migration runner.
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
-- **changelog job:** on pull requests, `node scripts/check-changelog.mjs` checks that
-  `CHANGELOG.md` has a section for the version the merge will mint (`docs/agents/releases.md`).
-  Dependabot's pull requests pass without one; their changes roll up into the next section. On a
-  push to `main` it passes without checking.
+- **changelog job:** on pull requests, Dependabot's included, `node scripts/check-changelog.mjs`
+  checks that the branch's `changelog.d/` fragment parses and that it leaves `CHANGELOG.md`'s
+  sections and other merges' fragments alone (`docs/agents/releases.md`). It never requires a
+  fragment. On a push to `main` it passes without checking.
 - **agents job:** `sync-agents.mjs --check` → `check-skills.mjs` → `lint-agent-neutrality.mjs` →
   `check-docs.mjs` → `check-python-version.mjs` → the script tests, all on Node 22 with nothing
   installed. It fails when the agent config mirror is stale, an installed skill differs from
@@ -301,19 +313,25 @@ Every merge to `main` is a release, and goes to production in this order
 | Database schema | Every merge to `main` | The pre-deploy command of `api` and `price-sync` applies pending migrations before the new deploy takes over (§8.3) |
 | `api` | Every merge to `main` | Railway builds `api/Dockerfile` from the repository root; health check `GET /health` must pass before traffic switches |
 | `price-sync` | Same image, rebuilt on every merge | Runs only on its cron schedule |
-| Version tag | Every merge to `main` | `release.yml` `tag` job: tags the merge commit `v<major>.<minor>.<build>`, computed by `scripts/next-version.mjs` from `VERSION` and the existing tags |
+| Version tag | Every merge to `main` | `release.yml` `tag` job: `scripts/stamp-changelog.mjs` stamps the merge's changelog section, tags the merge commit `v<major>.<minor>.<build>` (computed from `VERSION` and the existing tags), pushes a `chore(release): v<x.y.z> [skip ci]` stamp commit to `main`, and creates the GitHub Release ([ADR 0003](adr/0003-stamp-changelog-on-tag.md)) |
 | `web` | After the tag, once the API runs the merge | `release.yml` `web` job, below |
 
+The stamp commit changes only `CHANGELOG.md` and `changelog.d/`. `[skip ci]` keeps CI and the
+release workflow off it, but Railway is expected to deploy it like any push to `main`: the same
+code again, with no migration left to apply. `/health` then reports the stamp commit, whose release
+is the tag on the merge just before it (`git describe --tags`).
+
 The `web` job polls `https://api.tirelessinvest.com/health` for up to 15 minutes until it reports
-the merge commit, or a later commit that contains it. It then builds the web app with
-`VITE_APP_VERSION` and `VITE_APP_COMMIT` and deploys `web/dist` with `wrangler pages deploy` to the
+the merge commit, or a later commit that contains it, such as that stamp commit. It then builds
+the web app with `VITE_APP_VERSION` and `VITE_APP_COMMIT` and deploys `web/dist` with `wrangler pages deploy` to the
 Cloudflare Pages project `tirelessinvest`. If the API never reports the commit, the job fails and
 the web app is not deployed, so it never ships ahead of the API it calls. Web deploys run one at a
 time, in merge order.
 
 The tag is minted whether or not the deploy succeeds; a failed deploy is fixed forward with the
-next release. A re-run of the workflow on a tagged commit reuses its tag. The versioning rules
-(release line, roll-up of Dependabot merges) are in `docs/agents/releases.md`.
+next release. A re-run of the workflow on a tagged commit reuses its tag. When two merges land
+close together, one stamp can release both, and only the later merge's run deploys the web app,
+which contains the earlier one. The versioning rules are in `docs/agents/releases.md`.
 
 The release workflow is the only path to production for the web app: Cloudflare Pages' automatic
 production and preview builds are off, and there are no staging or pull request preview deploys
@@ -381,7 +399,7 @@ Both services deploy from `jwh3times/TirelessInvest`, with:
 | Builder | Dockerfile | Dockerfile |
 | Root directory | `/` | `/` |
 | Dockerfile path | `api/Dockerfile` | `api/Dockerfile` |
-| Watch paths | none: every release rebuilds both | none |
+| Watch paths | none: every push to `main` rebuilds both, a release's stamp commit included (§8.2) | none |
 | Auto-deploy | on, from `main` | on, from `main` |
 | Wait for CI | **off** (§8.2) | **off** |
 | Pre-deploy command | `python -m tirelessinvest.jobs.migrate` | `python -m tirelessinvest.jobs.migrate` |
@@ -481,7 +499,11 @@ recognize aren't registered, so a typo isn't synced forever.
    `main`. Add the service account token as its secret `OP_SERVICE_ACCOUNT_TOKEN`, and the web
    build values (§5.2) as its variables.
 3. Rulesets: the `Main branch rules` ruleset requires the `api`, `web`, `changelog` and `agents`
-   checks (§8.1); a tag ruleset on `v*` blocks updating and deleting version tags.
+   checks (§8.1), with the release GitHub App as its one bypass actor, set to **Always allow**; a
+   tag ruleset on `v*` blocks updating and deleting version tags.
+4. Install the release GitHub App on the repository, and set its `RELEASE_APP_CLIENT_ID` variable
+   and `RELEASE_APP_PRIVATE_KEY` secret in the `production` environment, not the repository
+   (§5.3).
 
 ### Step 6: First run
 
@@ -504,8 +526,9 @@ recognize aren't registered, so a typo isn't synced forever.
 ### Step 7: Smoke test
 
 - `GET https://api.tirelessinvest.com/health` returns `{"status":"ok","commit":"<the deployed commit>"}`.
-- After a merge, the Release workflow run is green, the merge commit carries its `v*` tag, and the
-  web app's footer shows `v<version> · <short commit>` for it.
+- After a merge, the Release workflow run is green, the merge commit carries its `v*` tag and a
+  GitHub Release, `main` has the `chore(release)` stamp commit with the merge's `CHANGELOG.md`
+  section, and the web app's footer shows `v<version> · <short commit>` for it.
 - A buy-and-hold SPY backtest from 2016 to today shows SPY results with no "synthetic data"
   warning.
 - A second test account can't see the first account's backtests.
@@ -531,6 +554,7 @@ recognize aren't registered, so a typo isn't synced forever.
 | Supabase Auth email limits | Invitations don't reach other users | Custom SMTP (§10 step 2.3) |
 | A migration fails at deploy | The new `api` and `price-sync` deploys stop and the previous ones keep running; the release's `web` job fails after 15 minutes, so the web app stays on the previous release | Fix forward: merge a fix for the migration (§8.3) |
 | The API deploy fails or is slow | The `web` job fails after 15 minutes without deploying | Check the `api` deploy in Railway; fix forward, or re-run the workflow once the API is up |
+| The release App's token or push fails | The `tag` job fails: the merge gets no tag, section or GitHub Release, and `web` doesn't run, though Railway still deploys the API | Check the App's installation, `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY` and the ruleset's bypass (§5.3, §10 step 5), then re-run the workflow: the stamp releases every untagged merge |
 | JWT signing key rotated | Tokens briefly rejected | The API caches published keys for 10 minutes; wait about 20 minutes after creating a standby key before rotating |
 | Very long backtest | Request takes up to about 16s | Within limits today; move to a queued job if it grows (§3.7) |
 

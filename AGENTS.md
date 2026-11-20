@@ -18,7 +18,8 @@ node scripts/lint-agent-neutrality.mjs   # skill and agent sources read correctl
 node scripts/check-docs.mjs              # doc links resolve and docs/agents/docs.md maps every doc
 node scripts/check-python-version.mjs    # api/.python-version matches the Dockerfile's Python
 node scripts/next-version.mjs            # the version the next merge to main will mint
-node scripts/check-changelog.mjs         # CHANGELOG.md has a section for that version
+node scripts/check-changelog.mjs         # the branch's changelog.d/ fragment is valid
+node scripts/stamp-changelog.mjs --dry-run   # the sections the release workflow would stamp
 node --test "scripts/*.test.mjs"         # tests for the scripts above
 ```
 
@@ -131,8 +132,9 @@ node scripts/sync-agents.mjs
 ```
 
 `scripts/sync-agents.mjs`, `lint-agent-neutrality.mjs`, `check-docs.mjs`, `check-skills.mjs`, and
-`sync-main.mjs`, `next-version.mjs` and `check-changelog.mjs` where this repository carries them, are
-canonical in `jwh3times/skills` with their tests: fix them there, then copy them here.
+`sync-main.mjs`, `next-version.mjs`, `check-changelog.mjs` and `stamp-changelog.mjs` where this
+repository carries them, are canonical in `jwh3times/skills` with their tests: fix them there, then
+copy them here.
 `sync-agents.mjs` also writes the marked blocks in this file: change them in `jwh3times/skills`, not
 here.
 

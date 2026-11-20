@@ -4,10 +4,15 @@ All notable changes to TirelessInvest are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The product has
 one version, the `vX.Y.Z` tag the release workflow puts on every merge to `main`; `VERSION` holds
-the current release line as `X.Y.0`. Each section below names the version its merge minted. A Dependabot
-merge mints a version with no section of its own: its changes are rolled up into the next section.
+the current release line as `X.Y.0`. Each section below names the version its merge minted.
 A major version means a breaking change for users (see `GLOSSARY.md`); until `1.0.0`, breaking
 changes raise the minor version.
+
+Branches never edit this file. Each writes its entries to `changelog.d/`, and after the merge the
+release workflow stamps them into the section for the version that merge mints; a merge with
+none, Dependabot's included, gets a section from its PR title
+([ADR 0003](docs/adr/0003-stamp-changelog-on-tag.md)). Up to 0.7.13, a Dependabot merge minted a
+version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in the next section.
 
 ## [Unreleased]
 
