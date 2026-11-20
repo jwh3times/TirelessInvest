@@ -205,6 +205,15 @@ The job loads the Cloudflare credentials from 1Password at run time, from the it
 with Cloudflare Pages edit permission) and `account id` becomes `CLOUDFLARE_ACCOUNT_ID`. No
 Cloudflare credential is stored in GitHub.
 
+The `tag` job runs outside that environment and pushes the changelog stamp commit to `main` as the
+release GitHub App, which is installed on the repository with Contents write and is the `main`
+ruleset's one bypass actor ([ADR 0003](adr/0003-stamp-changelog-on-tag.md)):
+
+| Name | Kind | Notes |
+|---|---|---|
+| `RELEASE_APP_CLIENT_ID` | Repository variable | The release App's client ID |
+| `RELEASE_APP_PRIVATE_KEY` | Repository secret | The release App's private key |
+
 ## 6. Data model
 
 Defined in `supabase/migrations/20261110000000_init.sql`.
@@ -267,10 +276,10 @@ Runs on every push to `main` and on every pull request:
   Postgres 17 service container, on the Python that `api/.python-version` pins. That covers 34
   tests: engine, Alpaca client, API/database integration and the migration runner.
 - **web job:** `pnpm install --frozen-lockfile` → `pnpm build`, which type-checks and builds.
-- **changelog job:** on pull requests, `node scripts/check-changelog.mjs` checks that
-  `CHANGELOG.md` has a section for the version the merge will mint (`docs/agents/releases.md`).
-  Dependabot's pull requests pass without one; their changes roll up into the next section. On a
-  push to `main` it passes without checking.
+- **changelog job:** on pull requests, Dependabot's included, `node scripts/check-changelog.mjs`
+  checks that the branch's `changelog.d/` fragment parses and that it leaves `CHANGELOG.md`'s
+  sections and other merges' fragments alone (`docs/agents/releases.md`). It never requires a
+  fragment. On a push to `main` it passes without checking.
 - **agents job:** `sync-agents.mjs --check` → `check-skills.mjs` → `lint-agent-neutrality.mjs` →
   `check-docs.mjs` → `check-python-version.mjs` → the script tests, all on Node 22 with nothing
   installed. It fails when the agent config mirror is stale, an installed skill differs from
@@ -301,19 +310,25 @@ Every merge to `main` is a release, and goes to production in this order
 | Database schema | Every merge to `main` | The pre-deploy command of `api` and `price-sync` applies pending migrations before the new deploy takes over (§8.3) |
 | `api` | Every merge to `main` | Railway builds `api/Dockerfile` from the repository root; health check `GET /health` must pass before traffic switches |
 | `price-sync` | Same image, rebuilt on every merge | Runs only on its cron schedule |
-| Version tag | Every merge to `main` | `release.yml` `tag` job: tags the merge commit `v<major>.<minor>.<build>`, computed by `scripts/next-version.mjs` from `VERSION` and the existing tags |
+| Version tag | Every merge to `main` | `release.yml` `tag` job: `scripts/stamp-changelog.mjs` stamps the merge's changelog section, tags the merge commit `v<major>.<minor>.<build>` (computed from `VERSION` and the existing tags), pushes a `chore(release): v<x.y.z> [skip ci]` stamp commit to `main`, and creates the GitHub Release ([ADR 0003](adr/0003-stamp-changelog-on-tag.md)) |
 | `web` | After the tag, once the API runs the merge | `release.yml` `web` job, below |
 
+The stamp commit changes only `CHANGELOG.md` and `changelog.d/`. `[skip ci]` keeps CI and the
+release workflow off it, but Railway is expected to deploy it like any push to `main`: the same
+code again, with no migration left to apply. `/health` then reports the stamp commit, whose release
+is the tag on the merge just before it (`git describe --tags`).
+
 The `web` job polls `https://api.tirelessinvest.com/health` for up to 15 minutes until it reports
-the merge commit, or a later commit that contains it. It then builds the web app with
+the merge commit, or a later commit that contains it, such as that stamp commit. It then builds the web app with
 `VITE_APP_VERSION` and `VITE_APP_COMMIT` and deploys `web/dist` with `wrangler pages deploy` to the
 Cloudflare Pages project `tirelessinvest`. If the API never reports the commit, the job fails and
 the web app is not deployed, so it never ships ahead of the API it calls. Web deploys run one at a
 time, in merge order.
 
 The tag is minted whether or not the deploy succeeds; a failed deploy is fixed forward with the
-next release. A re-run of the workflow on a tagged commit reuses its tag. The versioning rules
-(release line, roll-up of Dependabot merges) are in `docs/agents/releases.md`.
+next release. A re-run of the workflow on a tagged commit reuses its tag. When two merges land
+close together, one stamp can release both, and only the later merge's run deploys the web app,
+which contains the earlier one. The versioning rules are in `docs/agents/releases.md`.
 
 The release workflow is the only path to production for the web app: Cloudflare Pages' automatic
 production and preview builds are off, and there are no staging or pull request preview deploys
@@ -381,7 +396,7 @@ Both services deploy from `jwh3times/TirelessInvest`, with:
 | Builder | Dockerfile | Dockerfile |
 | Root directory | `/` | `/` |
 | Dockerfile path | `api/Dockerfile` | `api/Dockerfile` |
-| Watch paths | none: every release rebuilds both | none |
+| Watch paths | none: every push to `main` rebuilds both, a release's stamp commit included (§8.2) | none |
 | Auto-deploy | on, from `main` | on, from `main` |
 | Wait for CI | **off** (§8.2) | **off** |
 | Pre-deploy command | `python -m tirelessinvest.jobs.migrate` | `python -m tirelessinvest.jobs.migrate` |
@@ -481,7 +496,10 @@ recognize aren't registered, so a typo isn't synced forever.
    `main`. Add the service account token as its secret `OP_SERVICE_ACCOUNT_TOKEN`, and the web
    build values (§5.2) as its variables.
 3. Rulesets: the `Main branch rules` ruleset requires the `api`, `web`, `changelog` and `agents`
-   checks (§8.1); a tag ruleset on `v*` blocks updating and deleting version tags.
+   checks (§8.1), with the release GitHub App as its one bypass actor, set to **Always allow**; a
+   tag ruleset on `v*` blocks updating and deleting version tags.
+4. Install the release GitHub App on the repository, and set its `RELEASE_APP_CLIENT_ID` variable
+   and `RELEASE_APP_PRIVATE_KEY` secret (§5.3).
 
 ### Step 6: First run
 

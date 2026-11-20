@@ -12,8 +12,11 @@
   operations. Update when `api/Dockerfile`, `api/.python-version`, `.dockerignore`, `supabase/`,
   `.github/workflows/`, `.github/dependabot.yml` or an environment variable changes, or a GitHub
   repository setting does (the `main` ruleset, CodeQL setup, merge options).
-- `CHANGELOG.md`: one dated section per version a merge mints, checked by the `changelog` CI job
-  (`docs/agents/releases.md`). `ship-owned`, like the `VERSION` file.
+- `CHANGELOG.md`: one dated section per version a merge mints, stamped by the release workflow
+  after the merge (`docs/agents/releases.md`). Frozen: no branch edits it.
+- `changelog.d/*.md`: each branch's changelog fragment, stamped into `CHANGELOG.md` after its merge
+  and checked by the `changelog` CI job (`changelog.d/README.md`). `ship-owned`, like the `VERSION`
+  file.
 - `GLOSSARY.md`: the project's own vocabulary, one term per entry with the words to avoid. Update
   when a design session settles a term.
 - `docs/adr/*.md`: architecture decision records, one decision each with the reason it was made.
