@@ -22,10 +22,11 @@ name: Release
 #
 # The push uses a token from the release GitHub App, the main ruleset's one bypass actor:
 # `GITHUB_TOKEN` cannot bypass a ruleset. The App's client ID is the RELEASE_APP_CLIENT_ID variable
-# and its private key the RELEASE_APP_PRIVATE_KEY secret. `[skip ci]` keeps the stamp commit from
-# starting CI or this workflow. Railway documents no such skip, so expect it to deploy the stamp
-# commit too: that commit is the merge's code, and its pre-deploy step finds no migration left to
-# apply (ADR 0003).
+# and its private key the RELEASE_APP_PRIVATE_KEY secret, both in the `production` environment, so
+# only a run on `main` can mint a token that bypasses its ruleset. `[skip ci]` keeps the stamp
+# commit from starting CI or this workflow. Railway documents no such skip, so expect it to deploy
+# the stamp commit too: that commit is the merge's code, and its pre-deploy step finds no migration
+# left to apply (ADR 0003).
 #
 # Railway's "Wait for CI" must stay off: it would hold the API deploy until this workflow
 # finished, while `web` waits for the API, and neither would move.
@@ -46,6 +47,8 @@ jobs:
     name: Stamp the changelog and tag
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Limited to main, like `web`, so no other branch's workflow can read the App's private key.
+    environment: production
     permissions:
       contents: write # gh release create with GITHUB_TOKEN
     # Stamps take turns and never cancel a running one. GitHub still replaces a waiting run when a

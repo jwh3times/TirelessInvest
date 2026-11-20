@@ -56,9 +56,10 @@ deploy ([ADR 0001](../adr/0001-railway-applies-migrations-at-deploy.md)).
 
 ## `CHANGELOG.md`
 
-No branch edits it: the release workflow stamps each merge's section, and the changelog check fails
-a branch that adds, removes or renumbers a section. The file is UTF-8. Until 0.7.12 the 0.1.0
-footer example held a lone Latin-1 middle dot (`0xB7`), so UTF-8 editors and tools refused the
-file, and one rewrite turned it into a replacement character. If a tool refuses the file again, a
+No branch writes its sections: the release workflow stamps each merge's section, and the changelog
+check fails a branch that adds, removes or renumbers a section or adds entries to `Unreleased`.
+The file is UTF-8. Until 0.7.12 the 0.1.0 footer example held a lone Latin-1 middle dot (`0xB7`),
+so UTF-8 editors and tools refused the file, and one rewrite turned it into a replacement
+character. If a tool refuses the file again, a
 non-UTF-8 byte has come back: find it with `grep -naxv '.*' CHANGELOG.md` and fix it on a branch
 of its own, instead of editing around it.

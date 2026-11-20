@@ -209,11 +209,13 @@ frontend origin.
 
 ### 3. Cloudflare Pages and the release workflow
 
-The release workflow (`.github/workflows/release.yml`) tags each merge to `main`, waits for the
-API to run it, then builds the web app and uploads it to Cloudflare Pages with Wrangler. The Pages
-project runs no builds of its own. The workflow reads `VITE_SUPABASE_URL`,
-`VITE_SUPABASE_ANON_KEY` (the publishable key, which is safe in a browser) and `VITE_API_URL`
-from the GitHub `production` environment, and its Cloudflare token from 1Password; see
+The release workflow (`.github/workflows/release.yml`) stamps each merge to `main` into
+`CHANGELOG.md` and tags it, waits for the API to run it, then builds the web app and uploads it to
+Cloudflare Pages with Wrangler. The Pages project runs no builds of its own. The workflow reads
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (the publishable key, which is safe in a browser),
+`VITE_API_URL` and the release GitHub App's `RELEASE_APP_CLIENT_ID` and `RELEASE_APP_PRIVATE_KEY`
+(which push the stamp commit past the `main` ruleset) from the GitHub `production` environment,
+and its Cloudflare token from 1Password; see
 [docs/INFRASTRUCTURE.md §5.3](docs/INFRASTRUCTURE.md#53-release-workflow-github-production-environment).
 
 `public/_redirects` handles client-side routes.
