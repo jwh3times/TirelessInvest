@@ -37,13 +37,19 @@ the scheme the `jwh3times/skills` development flow shares).
   app then; the earlier run skips `web`.
 - `main` moves twice per merge: the merge, then the stamp commit about a minute later. The ruleset
   requires branches to be up to date, so updating the next branch waits for the `Release` run.
-- **Railway is expected to deploy the stamp commit too.** Its docs describe no commit-message skip,
-  and neither service sets watch paths, so `[skip ci]` stops only GitHub Actions. That deploy builds the
-  merge's code again, since the stamp commit changes only `CHANGELOG.md` and `changelog.d/`, and its
-  pre-deploy migration step finds nothing left to apply ([ADR 0001](0001-railway-applies-migrations-at-deploy.md)).
-  The API's `/health` then reports the stamp commit, which carries no tag: its release is the tag
-  on its first parent, the merge (`git describe --tags` shows it). The `web` job accepts the stamp
-  commit, because it contains the merge.
-- Reopen this if releases stop following merges, if anything starts to act on the stamp commit in a
-  way that is not harmless (a tag-triggered workflow, a migration that is not idempotent), or if
+- **Railway skips the stamp commit through watch paths.** Its docs describe no commit-message
+  skip, so `[skip ci]` stops only GitHub Actions. Both services' watch paths are `**`,
+  `!/CHANGELOG.md` and `!/changelog.d/**`: a change outside those paths still deploys, and the
+  stamp commit, which touches only them, does not. Neither does a merge that touches only them, so
+  its `web` job fails until the API is redeployed. `/health` reports the merge commit, the one the
+  tag is on.
+- (Corrected 2026-11-20: this record first expected Railway to deploy the stamp commit, harmlessly,
+  since it is the merge's code and leaves no migration to apply
+  ([ADR 0001](0001-railway-applies-migrations-at-deploy.md)). On `v0.7.14` it was not harmless.
+  Railway started a deploy for the stamp commit 13 seconds after the merge's; the merge's deploy
+  failed as it was superseded, and the stamp commit's failed too. The API stayed on the previous
+  release for over 30 minutes, the `web` job timed out after 15, and a Railway redeploy and a
+  re-run of the release run finished the release. The watch paths were added then.)
+- Reopen this if releases stop following merges, if anything starts to act on the stamp commit (a
+  tag-triggered workflow, a deployer that does not honor the watch paths), or if
   the App's access has to widen beyond pushing the stamp commit and tags.

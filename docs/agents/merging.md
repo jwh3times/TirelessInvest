@@ -42,10 +42,16 @@ merge commit and creates the GitHub Release. Confirm with `git tag --points-at <
 tag is on the merge, not on `main`'s new tip. A run whose stamp found `main` moved ends green with a
 notice and skips `web`; the next merge's run releases both and deploys the web app.
 
-**The stamp commit runs no workflow, but Railway deploys it.** Its `[skip ci]` keeps CI and
-`Release` off it, so its CodeQL analysis is the only run it shows. Railway is expected to redeploy
-`api` and `price-sync` from it, the same code with no migration left to apply, and `/health` then
-reports the stamp commit (ADR 0003).
+**The stamp commit runs no workflow and deploys nothing.** Its `[skip ci]` keeps CI and `Release`
+off it, so its CodeQL analysis is the only run it shows. Railway skips it through the services'
+watch paths, which exclude `CHANGELOG.md` and `changelog.d/` (`docs/INFRASTRUCTURE.md` §8.5), so
+`/health` reports the merge commit; Railway's deployment list shows the stamp commit under
+**Show Skipped**. If Railway deploys a stamp commit, the watch paths have been lost or changed:
+the stamp's deploy supersedes the merge's, and when it fails too, as on `v0.7.14`, the API stays
+on the previous release and the `web` job times out (ADR 0003). Restore them, redeploy in Railway,
+and re-run the failed `Release` jobs. A merge that changes only `CHANGELOG.md` or `changelog.d/`
+is skipped like a stamp commit, and its `web` job fails the same way (`docs/INFRASTRUCTURE.md`
+§11).
 
 **Check a migration reached production through Railway's logs**, not by querying the production
 database. With the Railway MCP read tools: find the project and its `api` service, then read that
