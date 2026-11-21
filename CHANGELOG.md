@@ -18,6 +18,12 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.17] - 2026-11-21
+
+### Changed
+
+- build(deps): Bump supabase from 3.1.0 to 3.2.0 (#90)
+
 ## [0.7.16] - 2026-11-21
 
 ### Changed
