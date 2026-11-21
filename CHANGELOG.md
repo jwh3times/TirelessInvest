@@ -18,6 +18,12 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.16] - 2026-11-21
+
+### Changed
+
+- build(deps): Bump the python-minor-and-patch group across 1 directory with 2 updates (#88)
+
 ## [0.7.15] - 2026-11-20
 
 ### Fixed
