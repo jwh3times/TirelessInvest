@@ -24,9 +24,9 @@ name: Release
 # `GITHUB_TOKEN` cannot bypass a ruleset. The App's client ID is the RELEASE_APP_CLIENT_ID variable
 # and its private key the RELEASE_APP_PRIVATE_KEY secret, both in the `production` environment, so
 # only a run on `main` can mint a token that bypasses its ruleset. `[skip ci]` keeps the stamp
-# commit from starting CI or this workflow. Railway documents no such skip, so expect it to deploy
-# the stamp commit too: that commit is the merge's code, and its pre-deploy step finds no migration
-# left to apply (ADR 0003).
+# commit from starting CI or this workflow. Railway ignores it: the services' watch paths exclude
+# `CHANGELOG.md` and `changelog.d/`, the only files a stamp commit touches, so Railway skips it.
+# Without them, its deploy superseded the merge's and failed, and `web` timed out (ADR 0003).
 #
 # Railway's "Wait for CI" must stay off: it would hold the API deploy until this workflow
 # finished, while `web` waits for the API, and neither would move.
@@ -160,8 +160,8 @@ jobs:
         with:
           fetch-depth: 0 # history, to recognize a newer API commit that contains this one
 
-      # Railway also deploys the stamp commit that follows this merge, so the API may report that
-      # commit instead; it contains this one, which the ancestry check accepts.
+      # Railway skips the stamp commit that follows this merge (its watch paths), so the API reports
+      # this commit, or a later merge's, which the ancestry check accepts.
       - name: Wait for the API to run this commit or a later one
         run: |
           deadline=$(( $(date +%s) + 15 * 60 ))

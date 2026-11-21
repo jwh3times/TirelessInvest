@@ -317,12 +317,12 @@ Every merge to `main` is a release, and goes to production in this order
 | `web` | After the tag, once the API runs the merge | `release.yml` `web` job, below |
 
 The stamp commit changes only `CHANGELOG.md` and `changelog.d/`. `[skip ci]` keeps CI and the
-release workflow off it, but Railway is expected to deploy it like any push to `main`: the same
-code again, with no migration left to apply. `/health` then reports the stamp commit, whose release
-is the tag on the merge just before it (`git describe --tags`).
+release workflow off it, and both Railway services' watch paths exclude those files (§8.5), so
+Railway skips it too. Without them Railway deployed it 13 seconds after the merge, the merge's
+deploy was superseded, and the release stalled (ADR 0003). `/health` reports the merge commit.
 
 The `web` job polls `https://api.tirelessinvest.com/health` for up to 15 minutes until it reports
-the merge commit, or a later commit that contains it, such as that stamp commit. It then builds
+the merge commit, or a later commit that contains it. It then builds
 the web app with `VITE_APP_VERSION` and `VITE_APP_COMMIT` and deploys `web/dist` with `wrangler pages deploy` to the
 Cloudflare Pages project `tirelessinvest`. If the API never reports the commit, the job fails and
 the web app is not deployed, so it never ships ahead of the API it calls. Web deploys run one at a
@@ -399,7 +399,7 @@ Both services deploy from `jwh3times/TirelessInvest`, with:
 | Builder | Dockerfile | Dockerfile |
 | Root directory | `/` | `/` |
 | Dockerfile path | `api/Dockerfile` | `api/Dockerfile` |
-| Watch paths | none: every push to `main` rebuilds both, a release's stamp commit included (§8.2) | none |
+| Watch paths | `**`, `!/CHANGELOG.md`, `!/changelog.d/**`, one per line: every push to `main` rebuilds both except a release's stamp commit (§8.2) | the same |
 | Auto-deploy | on, from `main` | on, from `main` |
 | Wait for CI | **off** (§8.2) | **off** |
 | Pre-deploy command | `python -m tirelessinvest.jobs.migrate` | `python -m tirelessinvest.jobs.migrate` |
@@ -473,7 +473,8 @@ recognize aren't registered, so a typo isn't synced forever.
 
 1. Create a project from the GitHub repo `jwh3times/TirelessInvest`.
 2. Create the `api` and `price-sync` services from the repo, and set each one's settings as in
-   §8.5. Leave **Wait for CI** off.
+   §8.5. Leave **Wait for CI** off, and set the watch paths on both, so the release's stamp commit
+   does not deploy.
 3. Set shared variables on both services (§5.1). Mark the Alpaca keys and `DATABASE_URL` as
    sealed/secret.
 4. On `api`, add the custom domain `api.tirelessinvest.com`. Copy the CNAME target and the TXT
