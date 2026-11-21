@@ -46,9 +46,12 @@ notice and skips `web`; the next merge's run releases both and deploys the web a
 off it, so its CodeQL analysis is the only run it shows. Railway skips it through the services'
 watch paths, which exclude `CHANGELOG.md` and `changelog.d/` (`docs/INFRASTRUCTURE.md` §8.5), so
 `/health` reports the merge commit; Railway's deployment list shows the stamp commit under
-**Show Skipped**. If Railway deploys a stamp commit, the watch paths have been lost: the stamp's
-deploy supersedes the merge's, the `web` job times out, and the API can stay on the previous
-release (ADR 0003). Restore them, redeploy in Railway, and re-run the failed `Release` jobs.
+**Show Skipped**. If Railway deploys a stamp commit, the watch paths have been lost or changed:
+the stamp's deploy supersedes the merge's, and when it fails too, as on `v0.7.14`, the API stays
+on the previous release and the `web` job times out (ADR 0003). Restore them, redeploy in Railway,
+and re-run the failed `Release` jobs. A merge that changes only `CHANGELOG.md` or `changelog.d/`
+is skipped like a stamp commit, and its `web` job fails the same way (`docs/INFRASTRUCTURE.md`
+§11).
 
 **Check a migration reached production through Railway's logs**, not by querying the production
 database. With the Railway MCP read tools: find the project and its `api` service, then read that

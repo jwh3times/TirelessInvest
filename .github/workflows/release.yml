@@ -26,7 +26,8 @@ name: Release
 # only a run on `main` can mint a token that bypasses its ruleset. `[skip ci]` keeps the stamp
 # commit from starting CI or this workflow. Railway ignores it: the services' watch paths exclude
 # `CHANGELOG.md` and `changelog.d/`, the only files a stamp commit touches, so Railway skips it.
-# Without them, its deploy superseded the merge's and failed, and `web` timed out (ADR 0003).
+# Without them it deploys and supersedes the merge's deploy; on v0.7.14 both failed and `web`
+# timed out (ADR 0003).
 #
 # Railway's "Wait for CI" must stay off: it would hold the API deploy until this workflow
 # finished, while `web` waits for the API, and neither would move.

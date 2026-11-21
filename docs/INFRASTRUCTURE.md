@@ -318,8 +318,10 @@ Every merge to `main` is a release, and goes to production in this order
 
 The stamp commit changes only `CHANGELOG.md` and `changelog.d/`. `[skip ci]` keeps CI and the
 release workflow off it, and both Railway services' watch paths exclude those files (§8.5), so
-Railway skips it too. Without them Railway deployed it 13 seconds after the merge, the merge's
-deploy was superseded, and the release stalled (ADR 0003). `/health` reports the merge commit.
+Railway skips it too. Without them Railway deploys it seconds after the merge and supersedes the
+merge's deploy, which stalled the `v0.7.14` release (ADR 0003). `/health` reports the merge commit.
+A merge that changes only those files, such as an edit to `changelog.d/README.md` alone, is
+skipped the same way, so its `web` job fails (§11).
 
 The `web` job polls `https://api.tirelessinvest.com/health` for up to 15 minutes until it reports
 the merge commit, or a later commit that contains it. It then builds
@@ -399,7 +401,7 @@ Both services deploy from `jwh3times/TirelessInvest`, with:
 | Builder | Dockerfile | Dockerfile |
 | Root directory | `/` | `/` |
 | Dockerfile path | `api/Dockerfile` | `api/Dockerfile` |
-| Watch paths | `**`, `!/CHANGELOG.md`, `!/changelog.d/**`, one per line: every push to `main` rebuilds both except a release's stamp commit (§8.2) | the same |
+| Watch paths | `**`, `!/CHANGELOG.md`, `!/changelog.d/**`, one per line: every push to `main` rebuilds both unless it changes only those files, as a release's stamp commit does (§8.2) | the same |
 | Auto-deploy | on, from `main` | on, from `main` |
 | Wait for CI | **off** (§8.2) | **off** |
 | Pre-deploy command | `python -m tirelessinvest.jobs.migrate` | `python -m tirelessinvest.jobs.migrate` |
@@ -555,6 +557,7 @@ recognize aren't registered, so a typo isn't synced forever.
 | Supabase Auth email limits | Invitations don't reach other users | Custom SMTP (§10 step 2.3) |
 | A migration fails at deploy | The new `api` and `price-sync` deploys stop and the previous ones keep running; the release's `web` job fails after 15 minutes, so the web app stays on the previous release | Fix forward: merge a fix for the migration (§8.3) |
 | The API deploy fails or is slow | The `web` job fails after 15 minutes without deploying | Check the `api` deploy in Railway; fix forward, or re-run the workflow once the API is up |
+| A merge changes only `CHANGELOG.md` or `changelog.d/` | Railway's watch paths skip it (§8.5), so the API never reports it and the `web` job fails after 15 minutes; the tag, section and GitHub Release are still made | Run **Deploy Latest Commit** on `api` in Railway, then re-run the failed `web` job, which accepts a later commit that contains the merge |
 | The release App's token or push fails | The `tag` job fails: the merge gets no tag, section or GitHub Release, and `web` doesn't run, though Railway still deploys the API | Check the App's installation, `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY` and the ruleset's bypass (§5.3, §10 step 5), then re-run the workflow: the stamp releases every untagged merge |
 | JWT signing key rotated | Tokens briefly rejected | The API caches published keys for 10 minutes; wait about 20 minutes after creating a standby key before rotating |
 | Very long backtest | Request takes up to about 16s | Within limits today; move to a queued job if it grows (§3.7) |

@@ -39,9 +39,10 @@ the scheme the `jwh3times/skills` development flow shares).
   requires branches to be up to date, so updating the next branch waits for the `Release` run.
 - **Railway skips the stamp commit through watch paths.** Its docs describe no commit-message
   skip, so `[skip ci]` stops only GitHub Actions. Both services' watch paths are `**`,
-  `!/CHANGELOG.md` and `!/changelog.d/**`: every other change still deploys, and the stamp commit,
-  which touches only those files, does not. `/health` reports the merge commit, the one the tag is
-  on.
+  `!/CHANGELOG.md` and `!/changelog.d/**`: a change outside those paths still deploys, and the
+  stamp commit, which touches only them, does not. Neither does a merge that touches only them, so
+  its `web` job fails until the API is redeployed. `/health` reports the merge commit, the one the
+  tag is on.
 - (Corrected 2026-11-20: this record first expected Railway to deploy the stamp commit, harmlessly,
   since it is the merge's code and leaves no migration to apply
   ([ADR 0001](0001-railway-applies-migrations-at-deploy.md)). On `v0.7.14` it was not harmless.
