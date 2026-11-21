@@ -24,11 +24,34 @@ and `ship.md`; this file holds the steps around a merge and what has gone wrong.
 refused). Once one PR merges, the next shows `BEHIND`: `gh pr update-branch <n>`, poll
 `mergeStateStatus` until `CLEAN` (about two minutes), then `gh pr merge <n> --merge`.
 
-For a Dependabot PR, `update-branch` puts a merge commit by the maintainer at the branch tip, so the
-`ship` changelog roll-up can't attribute that version to the bot. Commenting `@dependabot rebase`
-instead keeps the bot as the author, but is slower.
+- **PRs merge in any order.** No branch names a version or edits `CHANGELOG.md`: each writes its
+  own `changelog.d/<branch-slug>.md` fragment
+  ([ADR 0003](../adr/0003-stamp-changelog-on-tag.md)), so open PRs don't collide over the changelog.
+- **Wait for the stamp before updating the next branch.** About a minute after each merge, the
+  release workflow's `tag` job pushes a `chore(release): v<x.y.z> [skip ci]` commit that moves
+  `main` again. Run `gh pr update-branch` after that, or the branch needs a second update and a
+  second CI run.
 
 ## After the merge
+
+**Find the release run by commit.** Select the `Release` run whose `headSha` is the merge commit
+(`gh run list --workflow release.yml --json databaseId,headSha,status,conclusion`); right after a
+merge, `--limit 1` can return the previous one. Its `tag` job stamps the merge's section into
+`CHANGELOG.md`, deletes its fragment, pushes the stamp commit as `release-stamper[bot]`, tags the
+merge commit and creates the GitHub Release. Confirm with `git tag --points-at <merge commit>`: the
+tag is on the merge, not on `main`'s new tip. A run whose stamp found `main` moved ends green with a
+notice and skips `web`; the next merge's run releases both and deploys the web app.
+
+**The stamp commit runs no workflow and deploys nothing.** Its `[skip ci]` keeps CI and `Release`
+off it, so its CodeQL analysis is the only run it shows. Railway skips it through the services'
+watch paths, which exclude `CHANGELOG.md` and `changelog.d/` (`docs/INFRASTRUCTURE.md` §8.5), so
+`/health` reports the merge commit; Railway's deployment list shows the stamp commit under
+**Show Skipped**. If Railway deploys a stamp commit, the watch paths have been lost or changed:
+the stamp's deploy supersedes the merge's, and when it fails too, as on `v0.7.14`, the API stays
+on the previous release and the `web` job times out (ADR 0003). Restore them, redeploy in Railway,
+and re-run the failed `Release` jobs. A merge that changes only `CHANGELOG.md` or `changelog.d/`
+is skipped like a stamp commit, and its `web` job fails the same way (`docs/INFRASTRUCTURE.md`
+§11).
 
 **Check a migration reached production through Railway's logs**, not by querying the production
 database. With the Railway MCP read tools: find the project and its `api` service, then read that
@@ -37,11 +60,12 @@ runner logs `INFO applied N migration(s): <versions>`. Railway tags that line `s
 because Python logging writes to stderr; a real failure logs `migration failed:` and fails the
 deploy ([ADR 0001](../adr/0001-railway-applies-migrations-at-deploy.md)).
 
-## Editing `CHANGELOG.md`
+## `CHANGELOG.md`
 
+No branch writes its sections: the release workflow stamps each merge's section, and the changelog
+check fails a branch that adds, removes or renumbers a section or adds entries to `Unreleased`.
 The file is UTF-8. Until 0.7.12 the 0.1.0 footer example held a lone Latin-1 middle dot (`0xB7`),
 so UTF-8 editors and tools refused the file, and one rewrite turned it into a replacement
-character. If a tool refuses the file again, a non-UTF-8 byte has come back: find it with
-`grep -naxv '.*' CHANGELOG.md` and fix that byte, instead of editing around it. After adding a
-section, check that `git diff -U0 CHANGELOG.md` shows no removed lines, and run
-`node scripts/check-changelog.mjs`.
+character. If a tool refuses the file again, a
+non-UTF-8 byte has come back: find it with `grep -naxv '.*' CHANGELOG.md` and fix it on a branch
+of its own, instead of editing around it.

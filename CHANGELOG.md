@@ -4,14 +4,56 @@ All notable changes to TirelessInvest are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The product has
 one version, the `vX.Y.Z` tag the release workflow puts on every merge to `main`; `VERSION` holds
-the current release line as `X.Y.0`. Each section below names the version its merge minted. A Dependabot
-merge mints a version with no section of its own: its changes are rolled up into the next section.
+the current release line as `X.Y.0`. Each section below names the version its merge minted.
 A major version means a breaking change for users (see `GLOSSARY.md`); until `1.0.0`, breaking
 changes raise the minor version.
+
+Branches never edit this file. Each writes its entries to `changelog.d/`, and after the merge the
+release workflow stamps them into the section for the version that merge mints; a merge with
+none, Dependabot's included, gets a section from its PR title
+([ADR 0003](docs/adr/0003-stamp-changelog-on-tag.md)). Up to 0.7.13, a Dependabot merge minted a
+version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in the next section.
 
 ## [Unreleased]
 
 No unreleased changes.
+
+## [0.7.16] - 2026-11-21
+
+### Changed
+
+- build(deps): Bump the python-minor-and-patch group across 1 directory with 2 updates (#88)
+
+## [0.7.15] - 2026-11-20
+
+### Fixed
+
+- **A release no longer stalls on Railway's deploy of its changelog stamp commit.** Railway ignores
+  `[skip ci]`, so on `v0.7.14` it deployed the stamp commit 13 seconds after the merge: the merge's
+  deploy was superseded, the stamp commit's failed, the API stayed on the previous release for over
+  30 minutes, and the web deploy timed out until a redeploy and a re-run. Both Railway services now
+  set watch paths (`**`, `!/CHANGELOG.md`, `!/changelog.d/**`): a stamp commit no longer deploys,
+  and every push that changes anything else still does. ADR 0003 carries a dated correction, and
+  `docs/INFRASTRUCTURE.md`, `docs/agents/merging.md` and the release workflow's comments describe
+  the watch paths.
+- **The runbook covers a merge that changes only the changelog files.** The watch paths skip it too,
+  so the API never reports it and the release's `web` job fails. `docs/INFRASTRUCTURE.md` §11 gives
+  the recovery: redeploy `api` in Railway, then re-run the failed `web` job.
+
+## [0.7.14] - 2026-11-20
+
+### Changed
+
+- **Each merge's changelog section is now stamped after it lands** (#89). A branch writes its
+  entries to its own `changelog.d/<branch-slug>.md` fragment and never edits `CHANGELOG.md`; after
+  the merge, the release workflow turns the fragment, or the PR title when there is none, into the
+  dated section, tags the merge commit, and creates a GitHub Release from the section. Pull
+  requests no longer renumber their sections after each other's merges, and a Dependabot merge
+  gets a section of its own instead of rolling up into the next one. The stamp commit is pushed by
+  the release GitHub App, the `main` ruleset's one bypass actor, from a `tag` job that runs in the
+  `main`-only `production` environment, so no other branch's workflow can use the App's key.
+  ADR 0003 records the move, and `docs/agents/releases.md`, `merging.md`, `ship.md`, the docs map,
+  the README and `docs/INFRASTRUCTURE.md` describe it.
 
 ## [0.7.13] - 2026-11-18
 
