@@ -37,6 +37,9 @@
 - `docs/agents/merging.md`, `docs/agents/local-runs.md`: from open PR to deployed release, and the
   development machine's traps. Update when a merge or local-run lesson is learned that no check
   enforces, or a command they quote changes.
+- `docs/agents/dependabot.md`: what reviewing a Dependabot pull request takes here, read by the
+  `dependabot` skill. Update when `.github/dependabot.yml`, a workflow's toolchain pins or install
+  steps, `api/Dockerfile`, `api/.python-version` or the API's or web app's main dependencies change.
 - `.agents/skills/**`: installed skills, listed in `skills-lock.json`. `frozen`: a reinstall
   overwrites them, and `scripts/check-skills.mjs` fails on an edited copy.
 
