@@ -18,6 +18,16 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.28] - 2026-11-23
+
+### Changed
+
+- The shared PreToolUse guard (`scripts/guard.mjs`) now reads this repository's own rules from
+  `docs/agents/guard.md`, on top of the ones it applies everywhere: it denies
+  `supabase stop --no-backup` and `npx skills update`, asks before `supabase db reset` and a
+  `supabase db push` to the hosted project, and protects the local `.env` files, `api/.venv/`,
+  `node_modules/` and the Supabase CLI's link in `supabase/.temp/`.
+
 ## [0.7.27] - 2026-11-23
 
 ### Changed
