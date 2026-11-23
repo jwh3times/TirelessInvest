@@ -40,6 +40,9 @@
 - `docs/agents/dependabot.md`: what reviewing a Dependabot pull request takes here, read by the
   `dependabot` skill. Update when `.github/dependabot.yml`, a workflow's toolchain pins or install
   steps, `api/Dockerfile`, `api/.python-version` or the API's or web app's main dependencies change.
+- `docs/agents/guard.md`: the commands `scripts/guard.mjs` denies or asks about here, and the
+  paths it protects, on top of its universal rules. Update when a **Never run** command or a
+  never-remove path in `docs/agents/workspace.md` changes, or how migrations reach production does.
 - `.agents/skills/**`: installed skills, listed in `skills-lock.json`. `frozen`: a reinstall
   overwrites them, and `scripts/check-skills.mjs` fails on an edited copy.
 
