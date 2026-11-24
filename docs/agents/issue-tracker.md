@@ -21,6 +21,8 @@ jwh3times 12
   which only the maintainer can move; `Needs a spec`, a design session (`/grill-with-docs` or
   `/to-spec`) first; `Research needed`; and `Depends on another issue`, `External wait` or
   `Upstream`, which go with the `blocked` label.
+- `Due` (date): set only when the action has a real deadline (an expiry, a renewal, an offer's end,
+  a date someone else set), never an aspirational one; empty otherwise.
 
 ## Priority order
 
