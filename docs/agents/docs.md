@@ -43,6 +43,9 @@
 - `docs/agents/guard.md`: the commands `scripts/guard.mjs` denies or asks about here, and the
   paths it protects, on top of its universal rules. Update when a **Never run** command or a
   never-remove path in `docs/agents/workspace.md` changes, or how migrations reach production does.
+- `docs/agents/test-proof.md`: how the `test-prover` skill runs one test on its own here, and the
+  suites it cannot prove without a service. Update when a test runner, a test folder, a `test`
+  command or what a test needs to run (`TEST_DATABASE_URL`, the Postgres container) changes.
 - `.agents/skills/**`: installed skills, listed in `skills-lock.json`. `frozen`: a reinstall
   overwrites them, and `scripts/check-skills.mjs` fails on an edited copy.
 
