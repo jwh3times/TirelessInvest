@@ -18,6 +18,16 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.32] - 2026-11-23
+
+### Changed
+
+- `docs/agents/test-proof.md` records how the shared `test-prover` skill runs one test on its own
+  here: the pytest and node commands, what a scratch worktree links, and that the API's
+  integration tests are proven only with a Postgres server behind `TEST_DATABASE_URL`. The
+  board's new `Due` date field is described in `docs/agents/issue-tracker.md`, and the Doc map
+  names the new settings file.
+
 ## [0.7.31] - 2026-11-23
 
 ### Changed
