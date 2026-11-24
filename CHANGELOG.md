@@ -18,6 +18,13 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.35] - 2026-11-24
+
+### Changed
+
+- `docs/agents/merging.md` names `release.yml` as the `land` skill's `Release workflow`, so `land`
+  watches this repository's release run instead of looking for a `version.yml` it doesn't have.
+
 ## [0.7.34] - 2026-11-24
 
 ### Changed
