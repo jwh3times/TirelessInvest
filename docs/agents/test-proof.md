@@ -1,8 +1,8 @@
 # Test proof
 
 How `test-prover` runs one test on its own here, and how it tells a run that tested nothing from a
-pass. The suites and their CI jobs are in `docs/agents/ship.md`; the traps of running them on a
-development machine are in `docs/agents/local-runs.md`.
+pass. The suites and their CI jobs are in `docs/agents/open-pr.md`; the traps of running them on
+a development machine are in `docs/agents/local-runs.md`.
 
 ## Test commands
 

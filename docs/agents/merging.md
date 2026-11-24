@@ -1,7 +1,7 @@
 # Merging
 
 From an open pull request to a merged, deployed release. What CI runs is in the README ("Tests")
-and `ship.md`; this file holds the steps around a merge and what has gone wrong.
+and `open-pr.md`; this file holds the steps around a merge and what has gone wrong.
 
 ## Before merging
 

@@ -33,7 +33,7 @@
   never edit them here.
 - `CLAUDE.md`: imports `AGENTS.md` for Claude Code. `owner-only`.
 - `docs/agents/*.md`: settings the shared skills read. Update when this repository's process
-  changes, or the `main` ruleset's required checks do (`ship.md` lists them).
+  changes, or the `main` ruleset's required checks do (`open-pr.md` lists them).
 - `docs/agents/merging.md`, `docs/agents/local-runs.md`: from open PR to deployed release, and the
   development machine's traps. Update when a merge or local-run lesson is learned that no check
   enforces, or a command they quote changes.
