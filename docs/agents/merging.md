@@ -69,3 +69,7 @@ so UTF-8 editors and tools refused the file, and one rewrite turned it into a re
 character. If a tool refuses the file again, a
 non-UTF-8 byte has come back: find it with `grep -naxv '.*' CHANGELOG.md` and fix it on a branch
 of its own, instead of editing around it.
+
+## Release workflow
+
+`release.yml`
