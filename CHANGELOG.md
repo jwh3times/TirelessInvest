@@ -18,6 +18,12 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.39] - 2026-11-25
+
+### Changed
+
+- Take the latest shared skills and scripts from `jwh3times/skills` (#123)
+
 ## [0.7.38] - 2026-11-24
 
 ### Changed
