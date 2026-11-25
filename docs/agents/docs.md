@@ -11,7 +11,8 @@
 - `docs/INFRASTRUCTURE.md`: hosting, DNS, configuration, security, the deployment runbook and
   operations. Update when `api/Dockerfile`, `api/.python-version`, `.dockerignore`, `supabase/`,
   `.github/workflows/`, `.github/dependabot.yml` or an environment variable changes, or a GitHub
-  repository setting does (the `main` ruleset, CodeQL setup, merge options).
+  repository setting (the `main` ruleset, CodeQL setup, merge options) or a Railway service setting
+  (§8.5's table) does.
 - `CHANGELOG.md`: one dated section per version a merge mints, stamped by the release workflow's
   `scripts/stamp-changelog.mjs` after the merge (`docs/agents/releases.md`). `frozen`: no branch
   writes its sections.

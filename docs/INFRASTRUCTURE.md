@@ -318,10 +318,17 @@ Every merge to `main` is a release, and goes to production in this order
 
 The stamp commit changes only `CHANGELOG.md` and `changelog.d/`. `[skip ci]` keeps CI and the
 release workflow off it, and both Railway services' watch paths exclude those files (§8.5), so
-Railway skips it too. Without them Railway deploys it seconds after the merge and supersedes the
-merge's deploy, which stalled the `v0.7.14` release (ADR 0003). `/health` reports the merge commit.
-A merge that changes only those files, such as an edit to `changelog.d/README.md` alone, is
-skipped the same way, so its `web` job fails (§11).
+Railway's push-triggered deploy skips it too. Without them Railway deploys it seconds after the
+merge and supersedes the merge's deploy, which stalled the `v0.7.14` release (ADR 0003). So after a
+release `/health` normally reports the merge commit. A merge that changes only those files, such as
+an edit to `changelog.d/README.md` alone, is skipped the same way, so its `web` job fails (§11).
+
+Watch paths filter only push-triggered deploys. A deploy started by hand in Railway (**Deploy
+Latest Commit**, or applying a service setting change) builds `main`'s tip whatever they say, and
+right after a release that tip is the stamp commit. `/health` then reports the stamp commit, whose
+release is the tag on its first parent (`git describe --tags <commit>`). That is harmless: it is the
+merge's code, with no migration left to apply, and the `web` job accepts it. (A **Redeploy** of an
+existing deployment rebuilds that deployment's own commit.)
 
 The `web` job polls `https://api.tirelessinvest.com/health` for up to 15 minutes until it reports
 the merge commit, or a later commit that contains it. It then builds
@@ -330,10 +337,12 @@ Cloudflare Pages project `tirelessinvest`. If the API never reports the commit, 
 the web app is not deployed, so it never ships ahead of the API it calls. Web deploys run one at a
 time, in merge order.
 
-The tag is minted whether or not the deploy succeeds; a failed deploy is fixed forward with the
-next release. A re-run of the workflow on a tagged commit reuses its tag. When two merges land
-close together, one stamp can release both, and only the later merge's run deploys the web app,
-which contains the earlier one. The versioning rules are in `docs/agents/releases.md`.
+The tag is minted whether or not the deploy succeeds. A deploy that fails on its code is fixed
+forward with the next release; one that Railway itself fails, with the code fine, is redeployed by
+hand, because Railway does not retry a failed deploy (§11). A re-run of the workflow on a tagged
+commit reuses its tag. When two merges land close together, one stamp can release both, and only
+the later merge's run deploys the web app, which contains the earlier one. The versioning rules are
+in `docs/agents/releases.md`.
 
 The release workflow is the only path to production for the web app: Cloudflare Pages' automatic
 production and preview builds are off, and there are no staging or pull request preview deploys
@@ -401,7 +410,7 @@ Both services deploy from `jwh3times/TirelessInvest`, with:
 | Builder | Dockerfile | Dockerfile |
 | Root directory | `/` | `/` |
 | Dockerfile path | `api/Dockerfile` | `api/Dockerfile` |
-| Watch paths | `**`, `!/CHANGELOG.md`, `!/changelog.d/**`, one per line: every push to `main` rebuilds both unless it changes only those files, as a release's stamp commit does (§8.2) | the same |
+| Watch paths | `**`, `!/CHANGELOG.md`, `!/changelog.d/**`, one per line: every push to `main` rebuilds both unless it changes only those files, as a release's stamp commit does; a deploy started by hand ignores them (§8.2) | the same |
 | Auto-deploy | on, from `main` | on, from `main` |
 | Wait for CI | **off** (§8.2) | **off** |
 | Pre-deploy command | `python -m tirelessinvest.jobs.migrate` | `python -m tirelessinvest.jobs.migrate` |
@@ -556,7 +565,8 @@ recognize aren't registered, so a typo isn't synced forever.
 | Supabase paused (free plan) | Everything fails | Use Pro, or accept pausing during development |
 | Supabase Auth email limits | Invitations don't reach other users | Custom SMTP (§10 step 2.3) |
 | A migration fails at deploy | The new `api` and `price-sync` deploys stop and the previous ones keep running; the release's `web` job fails after 15 minutes, so the web app stays on the previous release | Fix forward: merge a fix for the migration (§8.3) |
-| The API deploy fails or is slow | The `web` job fails after 15 minutes without deploying | Check the `api` deploy in Railway; fix forward, or re-run the workflow once the API is up |
+| The API deploy fails on its code, or is slow | The previous `api` keeps serving, and the `web` job fails after 15 minutes without deploying | Check the `api` deploy in Railway. A build or health-check failure in the code: fix forward. Slow: once `/health` reports the merge or a later commit that contains it, re-run the failed `web` job |
+| Railway fails the deploy itself, with the code fine | Railway does not retry a failed deploy, so the previous `api` and `price-sync` keep running and the `web` job fails after 15 minutes | Run **Deploy Latest Commit** on `api` and `price-sync` in Railway. Once `/health` reports `main`'s tip, re-run the failed `web` job (`gh run rerun <run id> --failed`), which accepts a later commit that contains the merge |
 | A merge changes only `CHANGELOG.md` or `changelog.d/` | Railway's watch paths skip it (§8.5), so the API never reports it and the `web` job fails after 15 minutes; the tag, section and GitHub Release are still made | Run **Deploy Latest Commit** on `api` in Railway, then re-run the failed `web` job, which accepts a later commit that contains the merge |
 | The release App's token or push fails | The `tag` job fails: the merge gets no tag, section or GitHub Release, and `web` doesn't run, though Railway still deploys the API | Check the App's installation, `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY` and the ruleset's bypass (§5.3, §10 step 5), then re-run the workflow: the stamp releases every untagged merge |
 | JWT signing key rotated | Tokens briefly rejected | The API caches published keys for 10 minutes; wait about 20 minutes after creating a standby key before rotating |

@@ -7,10 +7,12 @@ name: Release
 #      pre-deploy step applies pending migrations before traffic switches. Nothing here drives it.
 #   2. `tag` stamps the changelog and tags the merge commit v<major>.<minor>.<build>
 #      (`Scheme: stamp-on-tag`, docs/adr/0003-stamp-changelog-on-tag.md). It is minted whether or
-#      not the deploy succeeds; a failed deploy is fixed forward with the next release.
-#   3. `web` waits for the API's /health to report this commit, then builds the web app with the
-#      version and commit and deploys it to Cloudflare Pages. The web app never ships ahead of
-#      the API it calls.
+#      not the deploy succeeds. A deploy that fails on its code is fixed forward with the next
+#      release; one Railway fails itself is not retried and must be redeployed by hand
+#      (docs/INFRASTRUCTURE.md §11).
+#   3. `web` waits for the API's /health to report this commit or a later one that contains it,
+#      then builds the web app with the version and commit and deploys it to Cloudflare Pages. The
+#      web app never ships ahead of the API it calls.
 #
 # `tag` runs `scripts/stamp-changelog.mjs`, which walks main's first-parent history back to the
 # newest three-part tag and, for each untagged merge, oldest first, builds its dated CHANGELOG.md
@@ -24,10 +26,11 @@ name: Release
 # `GITHUB_TOKEN` cannot bypass a ruleset. The App's client ID is the RELEASE_APP_CLIENT_ID variable
 # and its private key the RELEASE_APP_PRIVATE_KEY secret, both in the `production` environment, so
 # only a run on `main` can mint a token that bypasses its ruleset. `[skip ci]` keeps the stamp
-# commit from starting CI or this workflow. Railway ignores it: the services' watch paths exclude
-# `CHANGELOG.md` and `changelog.d/`, the only files a stamp commit touches, so Railway skips it.
-# Without them it deploys and supersedes the merge's deploy; on v0.7.14 both failed and `web`
-# timed out (ADR 0003).
+# commit from starting CI or this workflow. Railway's push-triggered deploy skips it too: the
+# services' watch paths exclude `CHANGELOG.md` and `changelog.d/`, the only files a stamp commit
+# touches. Without them it deploys and supersedes the merge's deploy; on v0.7.14 both failed and
+# `web` timed out (ADR 0003). A deploy started by hand ignores the watch paths and can put the stamp
+# commit live, harmlessly (docs/INFRASTRUCTURE.md §8.2).
 #
 # Railway's "Wait for CI" must stay off: it would hold the API deploy until this workflow
 # finished, while `web` waits for the API, and neither would move.
@@ -161,8 +164,9 @@ jobs:
         with:
           fetch-depth: 0 # history, to recognize a newer API commit that contains this one
 
-      # Railway skips the stamp commit that follows this merge (its watch paths), so the API reports
-      # this commit, or a later merge's, which the ancestry check accepts.
+      # Railway's push-triggered deploy skips the stamp commit that follows this merge (its watch
+      # paths), so the API reports this commit, or a later commit that contains it: a later merge's,
+      # or the stamp commit after a deploy started by hand. The ancestry check accepts either.
       - name: Wait for the API to run this commit or a later one
         run: |
           deadline=$(( $(date +%s) + 15 * 60 ))
@@ -172,7 +176,7 @@ jobs:
               echo "The API is running ${GITHUB_SHA}."
               break
             fi
-            # A later merge may already be live; this commit is then part of what the API runs.
+            # A later commit that contains this one may already be live (see the comment above).
             if [ -n "$commit" ] && git fetch -q origin main &&
               git merge-base --is-ancestor "$GITHUB_SHA" "$commit" 2>/dev/null; then
               echo "The API is running ${commit}, which includes ${GITHUB_SHA}."
