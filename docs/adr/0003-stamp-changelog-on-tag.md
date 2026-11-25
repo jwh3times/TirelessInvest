@@ -50,6 +50,14 @@ the scheme the `jwh3times/skills` development flow shares).
   failed as it was superseded, and the stamp commit's failed too. The API stayed on the previous
   release for over 30 minutes, the `web` job timed out after 15, and a Railway redeploy and a
   re-run of the release run finished the release. The watch paths were added then.)
+- (Amended 2026-11-25: watch paths filter only Railway's push-triggered deploys. A deploy started
+  by hand (Deploy Latest Commit, or applying a service setting change) builds `main`'s tip, which
+  right after a release is the stamp commit; on `v0.7.15` one did, and `/health` reported the stamp
+  commit. That is harmless, since it is the merge's code with no migration left, and the `web` job's
+  ancestry check accepts it. So `/health` reports the merge commit after a push-triggered deploy,
+  not necessarily after one started by hand, and a deploy started by hand is not the "deployer that
+  does not honor the watch paths" below. The decision stands. `docs/INFRASTRUCTURE.md` §8.2 holds
+  the details.)
 - Reopen this if releases stop following merges, if anything starts to act on the stamp commit (a
   tag-triggered workflow, a deployer that does not honor the watch paths), or if
   the App's access has to widen beyond pushing the stamp commit and tags.

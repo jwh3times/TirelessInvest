@@ -93,7 +93,8 @@ Cloudflare Pages (React)  ──JWT──▶  Railway: api (FastAPI)  ──▶ 
 - The API also backfills unseen symbols on demand when a backtest asks for them.
 - Every merge to `main` is a release with its own `vX.Y.Z` version. Railway applies pending
   database migrations before the new API takes traffic, and the web app deploys only once the
-  API reports the merge commit. The web app's footer shows the version and commit it runs.
+  API reports the merge commit or a later one that contains it. The web app's footer shows the
+  version and commit it runs.
 
 ## Local development
 

@@ -7,8 +7,8 @@ stamp-on-tag — `.github/workflows/release.yml` tags every merge to `main`
 `changelog.d/<branch-slug>.md` fragment; the workflow stamps them into the merge's dated section
 and tags the merge commit (`changelog.d/README.md`;
 [ADR 0003](../adr/0003-stamp-changelog-on-tag.md)). `Unreleased` stays an empty placeholder. The
-tag is minted on merge, whether or not the deploy that follows succeeds; a failed deploy is fixed
-forward.
+tag is minted on merge, whether or not the deploy that follows succeeds; a deploy that fails on its
+code is fixed forward, and one Railway fails is redeployed by hand (`docs/INFRASTRUCTURE.md` §11).
 
 ## Version file
 

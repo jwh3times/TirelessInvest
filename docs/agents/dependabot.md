@@ -27,7 +27,7 @@ then `uv sync --frozen`, `uv run ruff check .`, `uv run ruff format --check .` a
 (`node scripts/check-changelog.mjs`) and `agents` (the repository scripts on Node 22, among them
 "API Python matches the Dockerfile", `node scripts/check-python-version.mjs`). `release.yml` runs
 on a push to `main`: its `tag` job stamps the changelog and tags the merge, and its `web` job
-deploys the web app after the API reports the merge commit.
+deploys the web app after the API reports the merge commit or a later one that contains it.
 
 `.github/dependabot.yml` opens updates daily; one review covers a grouped PR:
 
