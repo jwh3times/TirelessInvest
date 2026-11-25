@@ -49,11 +49,11 @@ so `/health` normally reports the merge commit, and Railway's deployment list sh
 commit under **Show Skipped**. A deploy started by hand builds `main`'s tip whatever the watch
 paths say, so it can put the stamp commit live, harmlessly (`docs/INFRASTRUCTURE.md` §8.2). A
 stamp-commit deploy not started by hand (no creator, seconds after the merge) means the watch paths
-have been lost or changed: it
-supersedes the merge's deploy, and when it fails too, as on `v0.7.14`, the API stays on the
-previous release and the `web` job times out (ADR 0003). Restore them, redeploy in Railway, and
-re-run the failed `Release` jobs. A merge that changes only `CHANGELOG.md` or `changelog.d/` is
-skipped like a stamp commit, and its `web` job fails the same way (`docs/INFRASTRUCTURE.md` §11).
+have been lost or changed: it supersedes the merge's deploy, and when it fails too, as on
+`v0.7.14`, the API stays on the previous release and the `web` job times out (ADR 0003). Restore
+them, redeploy in Railway, and re-run the failed `Release` jobs. A merge that changes only
+`CHANGELOG.md` or `changelog.d/` is skipped like a stamp commit, and its `web` job fails the same
+way (`docs/INFRASTRUCTURE.md` §11).
 
 **When the `web` job fails its 15-minute wait**, the API never reported the merge or a later commit
 that contains it. Check the `api` deploy in Railway, then follow the matching failure row of

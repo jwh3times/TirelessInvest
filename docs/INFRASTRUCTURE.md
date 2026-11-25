@@ -484,8 +484,8 @@ recognize aren't registered, so a typo isn't synced forever.
 
 1. Create a project from the GitHub repo `jwh3times/TirelessInvest`.
 2. Create the `api` and `price-sync` services from the repo, and set each one's settings as in
-   §8.5. Leave **Wait for CI** off, and set the watch paths on both, so the release's stamp commit
-   does not deploy.
+   §8.5. Leave **Wait for CI** off, and set the watch paths on both, so the push of the release's
+   stamp commit does not deploy it (§8.2).
 3. Set shared variables on both services (§5.1). Mark the Alpaca keys and `DATABASE_URL` as
    sealed/secret.
 4. On `api`, add the custom domain `api.tirelessinvest.com`. Copy the CNAME target and the TXT
