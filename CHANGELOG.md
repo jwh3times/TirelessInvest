@@ -18,6 +18,12 @@ version with no section of its own (0.7.4, 0.7.5 and 0.7.10): its changes are in
 
 No unreleased changes.
 
+## [0.7.42] - 2026-11-27
+
+### Changed
+
+- build(deps): Bump `supabase` from `3.2.0` to `3.3.0` (#127)
+
 ## [0.7.41] - 2026-11-25
 
 ### Changed
